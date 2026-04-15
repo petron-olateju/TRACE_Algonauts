@@ -15,6 +15,8 @@ import yaml
 import nibabel as nib
 from nilearn import datasets
 
+from tqdm import tqdm
+
 
 with open("./configs/dirs.yaml", "r") as f:
     dir_configs = yaml.safe_load(f)
@@ -309,6 +311,168 @@ def epoch_fmri_by_words(
     return None, None, None
 
 
+def load_episode_fmri(subject, split, fmri_dir):
+    """
+    Load continuous fMRI timeseries for all episodes for a given subject.
+    
+    Parameters
+    ----------
+    subject : int
+        Subject number (e.g. 1, 2, 3, 5)
+    split : str
+        Data split, either 'train' or 'test'
+    fmri_dir : str
+        Path to the fMRI data directory
+        
+    Returns
+    -------
+    subject_dataset : dict
+        Dictionary containing:
+        - 'scenes_response': dict mapping episode name to fMRI timeseries
+          of shape (N_trs, 1000)
+        - 'parcel_coords': parcel coordinates from atlas
+        - 'parcel_ids': parcel IDs from atlas
+        - 'parcel_desc': parcel descriptions from atlas
+    """
+    print(f"Loading fMRI timeseries for s-0{subject}")
+    
+    fmri_stimuli_info = list_fmri_sessions(
+        dir=fmri_dir,
+        subject=subject,
+        split=split
+    )
+    
+    scenes_response_matrix = {}
+    for stimuli in tqdm(fmri_stimuli_info, total=len(fmri_stimuli_info)):
+        fmri_response = load_fmri_responses(
+            dir=fmri_dir,
+            subject=subject,
+            stimuli_name=stimuli,
+            split=split
+        )
+        stimuli_name = stimuli[13:]
+        if stimuli_name not in scenes_response_matrix:
+            scenes_response_matrix[stimuli_name] = [fmri_response]
+        else:
+            scenes_response_matrix[stimuli_name].append(fmri_response)
+    
+    for stimuli_name in scenes_response_matrix:
+        scenes_response_matrix[stimuli_name] = np.stack(
+            scenes_response_matrix[stimuli_name], axis=0
+        ).squeeze(0)
+    
+    print(f"Loading parcel coordinates for s-0{subject}")
+    parcel_coords, parcel_ids, parcel_desc = load_atlas_for_subject(
+        subject=subject,
+        dir=fmri_dir
+    )
+    
+    return {
+        "scenes_response": scenes_response_matrix,
+        "parcel_coords": parcel_coords,
+        "parcel_ids": parcel_ids,
+        "parcel_desc": parcel_desc
+    }
+
+
+def load_episode_word_epochs(subject, split, fmri_dir, transcript_dir, 
+                              hrf_delay, tr, context_trs):
+    """
+    Load word-locked fMRI epochs for all episodes for a given subject.
+    Each epoch is a short fMRI window time-locked to a spoken word onset,
+    shifted by hrf_delay to account for hemodynamic lag.
+    
+    Parameters
+    ----------
+    subject : int
+        Subject number (e.g. 1, 2, 3, 5)
+    split : str
+        Data split, either 'train' or 'test'
+    fmri_dir : str
+        Path to the fMRI data directory
+    transcript_dir : str
+        Path to the transcript (.tsv) directory
+    hrf_delay : int
+        Number of TRs to shift for hemodynamic response lag (typically 3)
+    tr : float
+        Repetition time in seconds (1.49 for this dataset)
+    context_trs : int
+        Number of TRs before and after each word event to include in epoch
+        
+    Returns
+    -------
+    subject_dataset : dict
+        Dictionary containing:
+        - 'scenes_response': dict mapping episode name to:
+            - 'trials': array of shape (N_words, 2*context_trs, 1000)
+            - 'start': array of shape (N_words,) — epoch start TR indices
+            - 'end': array of shape (N_words,) — epoch end TR indices
+        - 'parcel_coords': parcel coordinates from atlas
+        - 'parcel_ids': parcel IDs from atlas
+        - 'parcel_desc': parcel descriptions from atlas
+    """
+    print(f"Loading word epochs for s-0{subject}")
+    
+    fmri_stimuli_info = list_fmri_sessions(
+        dir=fmri_dir,
+        subject=subject,
+        split=split
+    )
+    
+    scenes_response_matrix = {}
+    for stimuli in tqdm(fmri_stimuli_info, total=len(fmri_stimuli_info)):
+        stimuli_fmri_response = load_fmri_responses(
+            dir=fmri_dir,
+            subject=subject,
+            stimuli_name=stimuli,
+            split=split
+        )
+        trials, start, end = epoch_fmri_by_words(
+            stimuli, stimuli_fmri_response,
+            transcript_dir, fmri_dir,
+            hrf_delay, tr, context_trs,
+            split=split
+        )
+        if trials is None:
+            continue
+        
+        stimuli_name = stimuli[13:]
+        if stimuli_name not in scenes_response_matrix:
+            scenes_response_matrix[stimuli_name] = {
+                'trials': [trials],
+                'start': [start],
+                'end': [end]
+            }
+        else:
+            scenes_response_matrix[stimuli_name]['trials'].append(trials)
+            scenes_response_matrix[stimuli_name]['start'].append(start)
+            scenes_response_matrix[stimuli_name]['end'].append(end)
+    
+    for stimuli_name in scenes_response_matrix:
+        scenes_response_matrix[stimuli_name]['trials'] = np.stack(
+            scenes_response_matrix[stimuli_name]['trials'], axis=0
+        ).squeeze(0)
+        scenes_response_matrix[stimuli_name]['start'] = np.stack(
+            scenes_response_matrix[stimuli_name]['start'], axis=0
+        ).squeeze(0)
+        scenes_response_matrix[stimuli_name]['end'] = np.stack(
+            scenes_response_matrix[stimuli_name]['end'], axis=0
+        ).squeeze(0)
+    
+    print(f"Loading parcel coordinates for s-0{subject}")
+    parcel_coords, parcel_ids, parcel_desc = load_atlas_for_subject(
+        subject=subject,
+        dir=fmri_dir
+    )
+    
+    return {
+        "scenes_response": scenes_response_matrix,
+        "parcel_coords": parcel_coords,
+        "parcel_ids": parcel_ids,
+        "parcel_desc": parcel_desc
+    }
+
+
 def get_parcel_label(coord: np.ndarray) -> Optional[str]:
     """Get the Schaefer atlas label for a 3D coordinate.
 
@@ -417,3 +581,6 @@ def load_atlas_for_subject(
         }
 
     return parcel_coords_matrix, unique_parcels, parcel_desc
+
+
+
