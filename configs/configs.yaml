@@ -4,9 +4,9 @@ subjects:
   - 3
   - 5
 
-HRF_DELAY: 3
-TR: 1.49
-CONTEXT_TRS: 5
+tr: 1.49
+hrf_delay: 3
+context_trs: 5
 
-ATLAS_NAME: '1000Parcels_7Networks_order'
-N_PARCELS: 1000
+atlas_name: '1000Parcels_7Networks_order'
+num_parcels: 1000
