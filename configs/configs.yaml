@@ -7,3 +7,6 @@ subjects:
 HRF_DELAY: 3
 TR: 1.49
 CONTEXT_TRS: 5
+
+ATLAS_NAME: '1000Parcels_7Networks_order'
+N_PARCELS: 1000

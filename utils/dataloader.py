@@ -6,10 +6,14 @@ import h5py
 import os
 import yaml
 
+from nilearn import datasets
+from nilearn.image import coord_transform
+import nibabel as nib
+
 with open('./configs/dirs.yaml', 'r') as f:
     dir_configs = yaml.safe_load(f)
 TRANSCRIPT_DIR = dir_configs['TRANSCRIPT_DIR']
-h5_DIR = dir_configs['h5_DIR']
+FMRI_DIR = dir_configs['FMRI_DIR']
 
 with open('./configs/configs.yaml', 'r') as f:
     configs = yaml.safe_load(f)
@@ -22,28 +26,28 @@ def load_tsv(file_path):
     return pd.read_csv(file_path, sep="\t")
 
 def fmri_file_name(dir, subject, split='train'):
-    h5_path = f'{dir}/sub-0{subject}/func/'
+    fmri_file_path = f'{dir}/sub-0{subject}/func/'
     if split=='train':
-        h5_path += f'sub-0{subject}_task-friends_'
-        h5_path += 'space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5'
+        fmri_file_path += f'sub-0{subject}_task-friends_'
+        fmri_file_path += 'space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5'
     else:
-        h5_path += f'sub-0{subject}_task-movie10_'
-        h5_path += 'space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5'
+        fmri_file_path += f'sub-0{subject}_task-movie10_'
+        fmri_file_path += 'space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5'
 
-    return h5_path
+    return fmri_file_path
 
 def load_fmri_data(dir, subject, stimuli_name, split='train'):
-    h5_path = fmri_file_name(dir, subject, split)
+    fmri_file_path = fmri_file_name(dir, subject, split)
     
-    with h5py.File(h5_path, 'r') as h5_file:
-        fmri_data = h5_file[stimuli_name][()] # type: ignore
+    with h5py.File(fmri_file_path, 'r') as fmri_file:
+        fmri_data = fmri_file[stimuli_name][()] # type: ignore
     return fmri_data
 
 def get_fmri_sessions(dir, subject, split='train'):
-    h5_path = fmri_file_name(dir, subject, split)
+    fmri_file_path = fmri_file_name(dir, subject, split)
 
-    with h5py.File(h5_path, 'r') as h5_file:
-        fmri_keys = list(h5_file.keys())
+    with h5py.File(fmri_file_path, 'r') as fmri_file:
+        fmri_keys = list(fmri_file.keys())
     return fmri_keys
 
 def load_transcript(dir, stimuli_name, split='train', ignore_nans=False):
@@ -76,7 +80,7 @@ def load_test_transcript(dir, stimuli_name, ignore_nans=False):
 
 
 def load_transcript_scenes(stimuli_name, fmri_data, 
-                           transcript_dir=TRANSCRIPT_DIR, h5_dir=h5_DIR, 
+                           transcript_dir=TRANSCRIPT_DIR, FMRI_DIR=FMRI_DIR, 
                            HRF_DELAY=HRF_DELAY, TR=TR, CONTEXT_TRS=CONTEXT_TRS, split='train'):
     try:
         transcript_df = load_transcript(transcript_dir, stimuli_name, split, ignore_nans=True)
@@ -109,3 +113,68 @@ def load_transcript_scenes(stimuli_name, fmri_data,
     if len(epochs) > 0:
         return np.stack(epochs), np.array(start), np.array(end)
     return None, None, None
+
+
+
+
+ATLAS_NAME = configs['ATLAS_NAME']
+N_PARCELS = configs['N_PARCELS']
+ATLAS_DESC = datasets.fetch_atlas_schaefer_2018(n_rois=N_PARCELS)
+ATLAS_IMG = nib.load(ATLAS_DESC.maps)
+ATLAS_LABELS = ATLAS_DESC.labels
+ATLAS_DATA = ATLAS_IMG.get_fdata()
+INV_AFFINE = np.linalg.inv(ATLAS_IMG.affine)
+def get_parcel_name(coord):
+    voxel = nib.affines.apply_affine(INV_AFFINE, coord).astype(int)
+
+    if (0 <= voxel[0] < ATLAS_DATA.shape[0] and 
+        0 <= voxel[1] < ATLAS_DATA.shape[1] and 
+        0 <= voxel[2] < ATLAS_DATA.shape[2]):
+        
+        label_idx = ATLAS_DATA[voxel[0], voxel[1], voxel[2]]
+        
+        if label_idx == 0:
+            print("Backgrpund/Non-Brain")
+            return  None
+        
+        return ATLAS_LABELS[int(label_idx)]
+    
+    print("Outside Volume Bounds")
+    return None
+
+def subject_atlas_file_name(subject, dir=FMRI_DIR):
+    atlas_path = f'{dir}/sub-0{subject}/atlas/'
+    atlas_path += f'sub-0{subject}'
+    atlas_path += '_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-dseg_parcellation.nii.gz'
+    return atlas_path
+
+def load_subject_atlas(subject, dir=FMRI_DIR):
+    atlas_path = subject_atlas_file_name(subject, dir)
+    atlas_img = nib.load(atlas_path)
+    atlas_data = atlas_img.get_fdata()
+    affine = atlas_img.affine
+    
+    subject_voxel_indices = np.argwhere(atlas_data > 0)
+    world_coords = nib.affines.apply_affine(affine, subject_voxel_indices)
+    labels = atlas_data[atlas_data > 0]
+    labels = np.round(labels).astype(int)
+
+    unique_parcels = np.unique(labels)
+    parcel_coords_matrix = np.zeros((len(unique_parcels), 3))
+    parcel_desc = {}
+
+    for i, parcel_id in enumerate(unique_parcels):
+        mask = (labels == parcel_id)
+        centroid = world_coords[mask].mean(axis=0)
+        parcel_coords_matrix[i] = centroid
+
+        parcel_name = get_parcel_name(centroid)[10:]
+        parcel_name = parcel_name.split('_')
+
+        parcel_desc[parcel_id] = {
+            'hemisphere': parcel_name[0],
+            'region': ''.join(parcel_name[1:-1]),
+            'region_idx': parcel_name[-1]
+        }
+
+    return parcel_coords_matrix, unique_parcels, parcel_desc
