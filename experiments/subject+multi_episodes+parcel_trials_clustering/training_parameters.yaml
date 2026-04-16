@@ -10,8 +10,6 @@ parameters:
   Dataset_Parameters:
     split: train
     subject: 1
-  Preprocessing_Parameter:
-    n_episodes: 10
   Preprocessing_Parameters:
     n_subsamples: 4
     n_windows: 60
@@ -19,3 +17,4 @@ parameters:
     scaling: minmax_time
     time_collapse: windowed_mean
     trials: episodes
+    n_episodes: 10

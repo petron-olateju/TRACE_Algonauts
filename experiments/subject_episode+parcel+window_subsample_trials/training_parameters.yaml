@@ -5,7 +5,7 @@ messages:
 - Only one episode/stimuli
 - Parcels-window-subsamples as samples for clustering - Windows for computing mean
   applied to temporal activity to downsample
-name: subject_episode+parcel+window_subsaomple_trials
+name: subject_episode+parcel+window_subsample_trials
 parameters:
   Dataset_Parameters:
     split: train

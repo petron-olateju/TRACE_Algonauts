@@ -1,0 +1,18 @@
+baseline: subject+multi_episodes+parcel_trials_clustering
+description: ''
+messages:
+- switch to full set minmax scaling
+name: subject+multi_episodes+parcel_trials_clustering/v1
+parameters:
+  Dataset_Parameters:
+    split: train
+    subject: 1
+  Preprocessing_Parameter:
+    n_episodes: 10
+  Preprocessing_Parameters:
+    n_subsamples: 4
+    n_windows: 60
+    pad_width: 500
+    scaling: minmax
+    time_collapse: windowed_mean
+    trials: episodes
