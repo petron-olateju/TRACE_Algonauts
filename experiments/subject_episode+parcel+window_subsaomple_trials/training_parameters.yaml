@@ -1,0 +1,21 @@
+baseline: ''
+description: ''
+messages:
+- Only one subject
+- Only one episode/stimuli
+- Parcels-window-subsamples as samples for clustering - Windows for computing mean
+  applied to temporal activity to downsample
+name: subject_episode+parcel+window_subsaomple_trials
+parameters:
+  Dataset_Parameters:
+    split: train
+    subject: 1
+  Preprocessing_Parameter:
+    n_episodes: 1
+  Preprocessing_Parameters:
+    n_subsamples: 4
+    n_windows: 60
+    pad_width: 500
+    scaling: minmax_time
+    time_collapse: windowed_mean
+    trials: within_episodes
