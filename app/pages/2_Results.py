@@ -4,6 +4,32 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+st.markdown(
+    """
+<style>
+    .stApp > div:first-child > div:first-child > div:first-child {
+        max-width: 100% !important;
+    }
+    section.main {
+        max-width: 100% !important;
+    }
+    .stExpander {
+        max-width: 100% !important;
+    }
+    .stMarkdown {
+        max-width: 100% !important;
+    }
+    .stImage {
+        max-width: 100% !important;
+    }
+    div[data-testid="stHorizontalBlock"] {
+        max-width: 100% !important;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 RESULTS_FILE = Path(__file__).parent.parent.parent / "experiments" / "results.yaml"
 MARKDOWN_RESULT_FILE = Path(__file__).parent.parent.parent / "results.md"
 EXPERIMENTS_DIR = Path(__file__).parent.parent.parent / "experiments"
@@ -22,25 +48,29 @@ def load_results():
     return data.get("results", [])
 
 
-def load_markdown_result():
+def load_markdown_results():
     if not MARKDOWN_RESULT_FILE.exists():
-        return None
+        return []
 
     with open(MARKDOWN_RESULT_FILE, "r") as f:
         content = f.read()
 
-    match = re.match(
-        r"^#\s*Results:\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\(([^)]+)\)\s*\n*(.*)",
-        content,
-        re.DOTALL,
-    )
-    if match:
-        timestamp = match.group(1).strip()
-        title = match.group(2).strip()
-        markdown_content = match.group(3).strip()
-        return {"timestamp": timestamp, "title": title, "content": markdown_content}
+    pattern = r"#\s*Results:\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*\(([^)]+)\)\s*\n*(.*?)(?=\n---|\n#\s*Results:|$)"
 
-    return None
+    matches = re.findall(pattern, content, re.DOTALL)
+
+    results = []
+    for match in matches:
+        timestamp = match[0].strip()
+        title = match[1].strip()
+        markdown_content = match[2].strip()
+        results.append(
+            {"timestamp": timestamp, "title": title, "content": markdown_content}
+        )
+
+    results.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    return results
 
 
 def get_section_image(section_key):
@@ -255,18 +285,22 @@ st.title("Results")
 
 st.markdown("---")
 
-markdown_result = load_markdown_result()
+markdown_results = load_markdown_results()
 
-if markdown_result:
-    with st.expander(
-        f"📊 {markdown_result['timestamp']} - {markdown_result['title']}", expanded=True
-    ):
-        render_status_dashboard(markdown_result["timestamp"])
-
-        st.markdown("---")
-        st.markdown("### Detailed Findings")
-
-        render_summary_with_images(markdown_result["content"])
+if markdown_results:
+    for i, markdown_result in enumerate(markdown_results):
+        expanded = i == 0
+        with st.expander(
+            f"📊 {markdown_result['timestamp']} - {markdown_result['title']}",
+            expanded=expanded,
+        ):
+            if "Pipeline Validation" in markdown_result["title"]:
+                render_status_dashboard(markdown_result["timestamp"])
+                st.markdown("---")
+                st.markdown("### Detailed Findings")
+                render_summary_with_images(markdown_result["content"])
+            else:
+                st.markdown(markdown_result["content"])
 
 results = load_results()
 
