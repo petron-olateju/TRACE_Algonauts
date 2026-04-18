@@ -30,9 +30,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-RESULTS_FILE = Path(__file__).parent.parent.parent / "experiments" / "results.yaml"
-MARKDOWN_RESULT_FILE = Path(__file__).parent.parent.parent / "results.md"
-EXPERIMENTS_DIR = Path(__file__).parent.parent.parent / "experiments"
+RESULTS_FILE = Path(__file__).parent.parent / "experiments" / "results.yaml"
+MARKDOWN_RESULT_FILE = Path(__file__).parent.parent / "results.md"
+EXPERIMENTS_DIR = Path(__file__).parent.parent / "experiments"
 
 
 def load_results():

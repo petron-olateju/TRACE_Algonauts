@@ -25,6 +25,25 @@ st.markdown("""
 
 st.markdown("---")
 
+st.subheader("1.5. Data Loader Architecture")
+
+st.markdown("""
+- **AlgonautsLoader Class**: Object-oriented dataloader for Algonauts 2025 dataset
+- **Extensible Design**: YAML-based configs under `algonauts` key, ready for HCP
+- **Key Features**:
+  - `self.configs` stores merged configs (dirs, params, subjects)
+  - Methods for loading fMRI, transcripts, and epochs
+  - Simple instantiation: `AlgonautsLoader(dataset="algonauts", split="train")`
+- **Usage**:
+  ```python
+  from utils.dataloader import get_default_dataset
+  dataset = get_default_dataset()
+  subject_data = dataset.load_episode_fmri(subject=1, split="train")
+  ```
+""")
+
+st.markdown("---")
+
 st.subheader("2. Response Matrix Construction")
 
 st.markdown("""
@@ -112,10 +131,11 @@ st.warning("Awaiting supervisor decision on response matrix approach")
 st.markdown("""
 | Component | Status |
 |----------|--------|
+| Data Loader Architecture | ✅ Refactored (AlgonautsLoader Class) |
 | fMRI Data Loading | ✅ Complete |
 | Response Matrices (both) | ✅ Complete |
 | TRACE Framework | 🔄 Evaluating approach |
-| Decision Pending | Awaiting supervisor |
+| Dataset Extensibility | ✅ Ready for HCP |
 """)
 
 st.markdown("---")
