@@ -1,12 +1,13 @@
-subjects:
-  - 1
-  - 2
-  - 3
-  - 5
+algonauts:
+  params:
+    tr: 1.49
+    hrf_delay: 3
+    context_trs: 5
+    atlas_name: '1000Parcels_7Networks_order'
+    num_parcels: 1000
 
-tr: 1.49
-hrf_delay: 3
-context_trs: 5
-
-atlas_name: '1000Parcels_7Networks_order'
-num_parcels: 1000
+  subjects:
+    - 1
+    - 2
+    - 3
+    - 5

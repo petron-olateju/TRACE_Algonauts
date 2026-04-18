@@ -1,2 +1,4 @@
-TRANSCRIPT_DIR: "data/algonauts_2025.competitors/stimuli/transcripts"
-FMRI_DIR: "data/algonauts_2025.competitors/fmri"
+algonauts:
+  dirs:
+    fmri: "data/algonauts_2025.competitors/fmri"
+    transcript: "data/algonauts_2025.competitors/stimuli/transcripts"

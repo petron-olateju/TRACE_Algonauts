@@ -11,28 +11,7 @@ from nilearn import datasets
 
 from tqdm import tqdm
 
-from utils import dataloader
-
-
-with open("./configs/dirs.yaml", "r") as f:
-    dir_configs = yaml.safe_load(f)
-TRANSCRIPT_DIR = dir_configs["TRANSCRIPT_DIR"]
-FMRI_DIR = dir_configs["FMRI_DIR"]
-
-with open("./configs/configs.yaml", "r") as f:
-    configs = yaml.safe_load(f)
-HRF_DELAY = configs["hrf_delay"]
-TR = configs["tr"]
-CONTEXT_TRS = configs["context_trs"]
-SUBJECTS = configs["subjects"]
-
-ATLAS_NAME = configs["atlas_name"]
-N_PARCELS = configs["num_parcels"]
-ATLAS_DESC = datasets.fetch_atlas_schaefer_2018(n_rois=N_PARCELS)
-ATLAS_IMG = nib.load(ATLAS_DESC.maps)
-ATLAS_LABELS = ATLAS_DESC.labels
-ATLAS_DATA = ATLAS_IMG.get_fdata()
-INV_AFFINE = np.linalg.inv(ATLAS_IMG.affine)
+from utils.dataloader import AlgonautsLoader
 
 
 def pad_to_width(arr, target_width, pad_value=0):
@@ -77,9 +56,9 @@ def signal_windows(arr, num_windows=4):
 
 
 def parcel_samples(
+    dataset: AlgonautsLoader,
     subject,
     split: str = "train",
-    fmri_dir: str = FMRI_DIR,
     trials: str = "episodes",
     time_collapse: Optional[str] = None,
     pad_width: int = 500,
@@ -92,12 +71,12 @@ def parcel_samples(
 
     Parameters
     ----------
+    dataset : AlgonautsLoader
+        Dataset loader instance.
     subject : str
         Subject identifier.
     split : str, default "train"
         Data split, either "train" or "test".
-    fmri_dir : str, default FMRI_DIR
-        Directory containing fMRI data.
     trials : str, default "episodes"
         Sampling mode:
         - "episodes": one row per stimulus episode (rows are parcels).
@@ -143,7 +122,7 @@ def parcel_samples(
         assert n_windows >= 1
     assert n_episodes >= 1
 
-    subject_data = dataloader.load_episode_fmri(subject, split, fmri_dir)
+    subject_data = dataset.load_episode_fmri(subject, split)
     scenes_response = subject_data["scenes_response"]
     parcel_desc = subject_data["parcel_desc"]
     stimulus = list(scenes_response.keys())[0:n_episodes]
