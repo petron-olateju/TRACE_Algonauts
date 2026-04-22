@@ -1,0 +1,17 @@
+baseline: ''
+description: For a subject,session, run, stack parcels temporal activity on time-axis
+  across tasks
+messages: []
+name: hcptrt_across_tasks
+parameters:
+  Dataset_Parameters:
+    subject: sub-01
+  Preprocessing_Parameter:
+    n_episodes: 1
+  Preprocessing_Parameters:
+    n_subsamples: 4
+    n_windows: 60
+    pad_width: 500
+    scaling: std_parcels
+    time_collapse: windowed_mean
+    trials: continuous

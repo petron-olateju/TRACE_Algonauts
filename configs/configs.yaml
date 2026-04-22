@@ -23,3 +23,13 @@ hcptrt:
 
   sessions:
     - 1
+
+  tsks:
+    - motor
+    - gambling
+    - wm
+    - restingstate
+    - social
+    - emotion
+    - language
+    - relational

@@ -39,6 +39,7 @@ Install dependencies:
 """
 
 import os
+import re
 import glob
 from typing import Optional, Tuple, List, Dict, Any
 
@@ -78,6 +79,86 @@ def _load_cifti_surface(path: str) -> Tuple[np.ndarray, nib.Cifti2Image]:
     data = img.get_fdata(dtype=np.float32)  # (T, G)
     return data, img
 
+
+# ---------------------------------------------------------------------------
+# MMP area → lobe lookup
+# ---------------------------------------------------------------------------
+# Maps each Glasser MMP area name (without L_/R_ prefix) to a coarse lobe label.
+# Based on the 22 cortical lobes in Glasser et al. 2016, collapsed to 8 broad lobes,
+# plus subcortical structures.
+MMP_LOBE: Dict[str, str] = {
+    # Primary & early visual (occipital)
+    "V1":"occipital","V2":"occipital","V3":"occipital","V4":"occipital",
+    "V6":"occipital","V6A":"occipital","V7":"occipital","V8":"occipital",
+    "V3A":"occipital","V3B":"occipital","V3CD":"occipital",
+    "V4t":"occipital","LO1":"occipital","LO2":"occipital","LO3":"occipital",
+    "VMV1":"occipital","VMV2":"occipital","VMV3":"occipital",
+    "POS1":"occipital","POS2":"occipital","DVT":"occipital",
+    # Dorsal visual / parietal
+    "MST":"parietal","MT":"parietal","FST":"parietal","PH":"parietal",
+    "V6A":"parietal","IPS1":"parietal","MIP":"parietal","VIP":"parietal",
+    "LIPd":"parietal","LIPv":"parietal","AIP":"parietal",
+    "IP0":"parietal","IP1":"parietal","IP2":"parietal",
+    "7AL":"parietal","7Am":"parietal","7PC":"parietal","7PL":"parietal","7Pm":"parietal","7m":"parietal",
+    "5L":"parietal","5m":"parietal","5mv":"parietal",
+    "PCV":"parietal","PGi":"parietal","PGp":"parietal","PGs":"parietal",
+    "PF":"parietal","PFm":"parietal","PFt":"parietal","PFop":"parietal","PFcm":"parietal",
+    "TPOJ1":"parietal","TPOJ2":"parietal","TPOJ3":"parietal",
+    "RSC":"parietal",
+    # Somatomotor
+    "1":"somatomotor","2":"somatomotor","3a":"somatomotor","3b":"somatomotor","4":"somatomotor",
+    "6a":"somatomotor","6d":"somatomotor","6ma":"somatomotor","6mp":"somatomotor",
+    "6r":"somatomotor","6v":"somatomotor",
+    "FEF":"somatomotor","PEF":"somatomotor","55b":"somatomotor",
+    "SCEF":"somatomotor","MI":"somatomotor",
+    "43":"somatomotor","OP4":"somatomotor","OP1":"somatomotor","OP2-3":"somatomotor",
+    # Insular / opercular
+    "Ig":"insular","PI":"insular","PoI1":"insular","PoI2":"insular",
+    "AAIC":"insular","AVI":"insular","FOP1":"insular","FOP2":"insular",
+    "FOP3":"insular","FOP4":"insular","FOP5":"insular","RI":"insular",
+    "Pir":"insular","52":"insular",
+    # Auditory / temporal
+    "A1":"temporal","A4":"temporal","A5":"temporal",
+    "LBelt":"temporal","MBelt":"temporal","PBelt":"temporal",
+    "PSL":"temporal","SFL":"temporal","STGa":"temporal",
+    "STSda":"temporal","STSdp":"temporal","STSva":"temporal","STSvp":"temporal",
+    "STV":"temporal","TA2":"temporal",
+    "TE1a":"temporal","TE1m":"temporal","TE1p":"temporal",
+    "TE2a":"temporal","TE2p":"temporal",
+    "TF":"temporal","TGd":"temporal","TGv":"temporal",
+    "PHA1":"temporal","PHA2":"temporal","PHA3":"temporal","PHT":"temporal",
+    "FFC":"temporal","PIT":"temporal","VVC":"temporal",
+    "H":"temporal","EC":"temporal","PeEc":"temporal","PreS":"temporal","ProS":"temporal",
+    # Prefrontal
+    "8Ad":"prefrontal","8Av":"prefrontal","8BL":"prefrontal","8BM":"prefrontal","8C":"prefrontal",
+    "9a":"prefrontal","9m":"prefrontal","9p":"prefrontal",
+    "9-46d":"prefrontal","a9-46v":"prefrontal","p9-46v":"prefrontal",
+    "10d":"prefrontal","10pp":"prefrontal","10r":"prefrontal","10v":"prefrontal",
+    "a10p":"prefrontal","p10p":"prefrontal",
+    "46":"prefrontal","IFJa":"prefrontal","IFJp":"prefrontal","IFSa":"prefrontal","IFSp":"prefrontal",
+    "44":"prefrontal","45":"prefrontal","47l":"prefrontal","47m":"prefrontal","47s":"prefrontal",
+    "a47r":"prefrontal","p47r":"prefrontal","i6-8":"prefrontal","s6-8":"prefrontal",
+    # Cingulate / medial
+    "23c":"cingulate","23d":"cingulate","24dd":"cingulate","24dv":"cingulate",
+    "a24":"cingulate","a24pr":"cingulate","p24":"cingulate","p24pr":"cingulate",
+    "25":"cingulate","33pr":"cingulate","a32pr":"cingulate","p32":"cingulate",
+    "p32pr":"cingulate","d23ab":"cingulate","v23ab":"cingulate",
+    "d32":"cingulate","s32":"cingulate","31a":"cingulate","31pd":"cingulate","31pv":"cingulate",
+    # Orbitofrontal
+    "OFC":"orbitofrontal","11l":"orbitofrontal","13l":"orbitofrontal",
+    "pOFC":"orbitofrontal",
+    # Subcortical
+    "accumbens_left":"subcortical","accumbens_right":"subcortical",
+    "amygdala_left":"subcortical","amygdala_right":"subcortical",
+    "brainStem":"subcortical",
+    "caudate_left":"subcortical","caudate_right":"subcortical",
+    "cerebellum_left":"subcortical","cerebellum_right":"subcortical",
+    "diencephalon_left":"subcortical","diencephalon_right":"subcortical",
+    "hippocampus_left":"subcortical","hippocampus_right":"subcortical",
+    "pallidum_left":"subcortical","pallidum_right":"subcortical",
+    "putamen_left":"subcortical","putamen_right":"subcortical",
+    "thalamus_left":"subcortical","thalamus_right":"subcortical",
+}
 
 # ---------------------------------------------------------------------------
 # Available hcp_utils parcellations
@@ -312,17 +393,42 @@ class HCPTRTLoader:
             parts = name.split("_")
 
             # Parse hemisphere and region name from label string.
-            # Glasser/MMP style:  "L_V1_ROI"  or  "R_46_ROI"
-            # Yeo/Schaefer style: "7Networks_LH_Vis_1"
+            # 1. Glasser/MMP style:  "L_V1_ROI"  or  "R_46_ROI"
             if parts[0] in ("L", "R"):
-                hemi   = "LH" if parts[0] == "L" else "RH"
-                region = "_".join(parts[1:-1]) if len(parts) > 2 else parts[1]
+                hemi     = "LH" if parts[0] == "L" else "RH"
+                # area_key for lobe lookup: strip "ROI" if it's there
+                area_key = "_".join(parts[1:-1]) if parts[-1] == "ROI" else "_".join(parts[1:])
+            
+            # 2. Yeo/Schaefer style: "7Networks_LH_Vis_1"
             elif len(parts) > 1 and parts[1] in ("LH", "RH"):
-                hemi   = parts[1]
-                region = "_".join(parts[2:])
+                hemi     = parts[1]
+                area_key = "_".join(parts[2:])
+            
+            # 3. Subcortical / Other: "Hippocampus_Left" or "thalamus-right"
             else:
-                hemi   = "unknown"
-                region = name
+                name_lower = name.lower()
+                if "left" in name_lower:
+                    hemi   = "LH"
+                    # For subcortical, area_key stays as name to match MMP_LOBE dict
+                    area_key = name
+                elif "right" in name_lower:
+                    hemi   = "RH"
+                    area_key = name
+                else:
+                    hemi   = "unknown"
+                    area_key = name
+
+            # Map area → lobe using MMP_LOBE; fall back to area_key if unknown
+            region = MMP_LOBE.get(area_key, area_key)
+            
+            # If the lookup worked, we have a clean lobe name. 
+            # If not, and it was a subcortical with "left"/"right", 
+            # we might want to clean the region name for display.
+            if region == area_key:
+                # Cleanup "left"/"right" from display name if it wasn't in the dict
+                region = re.sub(r'[_-]?left[_-]?', '', region, flags=re.IGNORECASE)
+                region = re.sub(r'[_-]?right[_-]?', '', region, flags=re.IGNORECASE)
+                region = region.strip("-_ ")
 
             parcel_desc[int(pid)] = {
                 "name":       name,
@@ -391,7 +497,7 @@ class HCPTRTLoader:
     def get_confounds_path(
         self, subject: str, session: str, task: str, run: int
     ) -> str:
-        """Build path to the confounds TSV file for one run."""
+        """Build path to the music confounds TSV file for one run."""
         fname = (
             f"{subject}_{session}_task-{task}_run-{run}"
             f"_desc-confounds_timeseries.tsv"
