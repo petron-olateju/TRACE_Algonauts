@@ -124,18 +124,37 @@ st.markdown("""
 
 st.markdown("---")
 
+st.subheader("1.6. HCPTRT Loader Architecture")
+
+st.markdown("""
+- **HCPTRTLoader Class**: Advanced loader for HCP Test-Retest (CIFTI) dataset
+- **CIFTI & Surface Support**: Handles 91k grayordinates (Surface Mesh + MNI subcortex)
+- **Key Features**:
+  - `hcp_utils` integration for on-the-fly parcellation (MMP, Yeo, Cole-Anticevic)
+  - Automatic confound denoising (Motion, CSF, WM)
+  - Cross-task stacking support (Motor, Gambling, WM, Social, Emotion, Rest)
+- **Usage**:
+  ```python
+  from utils.dataloader import get_hcptrt_loader
+  dataset = get_hcptrt_loader()
+  bold = dataset.load_fmri_responses(subject="sub-01", task="motor", parcellate=True)
+  ```
+""")
+
+st.markdown("---")
+
 st.header("Current Status")
 
-st.warning("Awaiting supervisor decision on response matrix approach")
+st.success("Universal functional fingerprinting validated across tasks")
 
 st.markdown("""
 | Component | Status |
 |----------|--------|
-| Data Loader Architecture | ✅ Refactored (AlgonautsLoader Class) |
+| Algonauts Loader Architecture | ✅ Complete |
+| HCPTRT Loader Architecture | ✅ Complete (CIFTI/Surface) |
 | fMRI Data Loading | ✅ Complete |
-| Response Matrices (both) | ✅ Complete |
-| TRACE Framework | 🔄 Evaluating approach |
-| Dataset Extensibility | ✅ Ready for HCP |
+| Cross-Task Validation | ✅ Complete (6 Tasks) |
+| TRACE Framework | 🔄 Training Initialized |
 """)
 
 st.markdown("---")

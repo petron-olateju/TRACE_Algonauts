@@ -42,8 +42,9 @@ st.markdown("""
 **TRACE** (Time series Representation Analysis through Contrastive Embeddings) is a contrastive 
 learning framework applied to human fMRI data.
 
-Originally developed for cellular recordings in mice, TRACE now extends to the macroscopic scale 
-of human neuroimaging to visualize functional organization.
+Initially validated using the **Algonauts 2025** (Naturalistic Movie) dataset, TRACE now leverages 
+the **HCP Test-Retest (HCPTRT)** CIFTI grayordinate data to learn state-invariant functional 
+fingerprints across multiple cognitive tasks.
 
 Use the sidebar to navigate between pages:
 """)

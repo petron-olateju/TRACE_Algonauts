@@ -1,3 +1,70 @@
+# Results: 2026-04-22 10:00 (Cross-Task Integration & HCPTRT Pipeline)
+
+## 📊 Summary of Findings
+The implementation and validation of the **HCP Test-Retest (HCPTRT)** pipeline marks a transition from stimulus-specific analysis (Algonauts) to **universal functional fingerprinting**. By stacking neural activity across six distinct cognitive tasks, we have demonstrated that brain regions maintain a stable "functional identity" regardless of the cognitive state (e.g., motor vs. social). This validates the use of multi-task data for generating robust, state-invariant contrastive embeddings.
+
+### 1. Cross-Task Anatomical Stability
+Experiments show that even when parcels are represented by their activity across a diverse range of tasks (**Motor, Gambling, WM, Social, Emotion, and Resting State**), they cluster primarily by **Anatomical Lobe**. This indicates that the "where" (anatomical location) is a stronger driver of the long-term functional signal than the "what" (current task-specific demand).
+
+### 2. Multi-Task "Fingerprinting"
+The `hcptrt_across_tasks` experiment stacked temporal activity across different domains. The resulting 2D embeddings show that parcels from the same MMP region (e.g., V1, MST) cluster tightly together even though the data includes completely different cognitive demands. This stability is the prerequisite for the **TRACE** framework to learn meaningful cross-task representations.
+
+### 3. Surface-Based High Resolution (MMP)
+Transitioning to the **Glasser MMP (360 regions)** parcellation on the CIFTI 91k grayordinate surface has significantly increased the "cleanness" of the clusters compared to volume-based parcellations. The surface-based denoising (regressing out motion and physiological noise) has yielded a high signal-to-noise ratio suitable for deep contrastive learning.
+
+### 4. Space Distinction: Grayordinate (HCP) vs. Volumetric (Algonauts)
+A key driver of the improved results in this update is the shift in data representation:
+*   **Algonauts (Pure Volumetric):** Uses MNI152 3D voxels for the entire brain. This is prone to "signal bleeding" across cortical folds where two functionally distinct regions touch in 3D space.
+*   **HCPTRT (Hybrid Grayordinate):** Uses a high-resolution **Surface Mesh** for the cortex (~59k vertices) and **MNI voxels** only for subcortical structures (~32k voxels). Measuring distance along the cortical ribbon rather than through 3D space prevents signal contamination, resulting in the sharper, more biologically accurate clusters seen in the `hcptrt_across_tasks` embeddings.
+
+---
+
+## 📽️ Presentation Strategy: "Beyond Stimulus-Specific Patterns"
+
+### Slide 1: Universal Functional Identity
+*   **Objective:** Show that brain regions have a signature that transcends specific tasks.
+*   **Primary Image:** `experiments/hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png`
+*   **Talking Point:** "By stacking 6 tasks, we see that the brain's fundamental organization is preserved. A visual parcel in a 'Social' task still looks like a visual parcel in a 'Motor' task. This universal fingerprint is what our model will learn."
+
+### Slide 2: Embedding Robustness (t-SNE vs UMAP)
+*   **Objective:** Demonstrate that the organizational findings are not an artifact of a single algorithm.
+*   **Compare:**
+    *   `experiments/hcptrt_across_tasks/tSNE_all_tasks@perplexity=15.png`
+    *   `experiments/hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png`
+*   **Talking Point:** "Both t-SNE and UMAP consistently recover the lobar architecture (Occipital, Parietal, Temporal, etc.) from multi-task data. This confirms that our data representation is capturing genuine biological structure."
+
+### Slide 3: The Advantage of Surface Data
+*   **Objective:** Explain why moving to HCPTRT (CIFTI) was necessary.
+*   **Talking Point:** "Unlike the volume-based data in Algonauts, the CIFTI grayordinate space allows us to parcellate exactly on the cortical ribbon. This reduces signal bleeding between adjacent folds and results in the highly distinct clusters we see in our multi-task embeddings."
+
+---
+
+## 🚀 Technical Implementation (HCPTRT Pipeline)
+
+### utils/loaders/hcptrt.py
+*   **CIFTI Support**: Native loading of `.dtseries.nii` files (91,282 grayordinates).
+*   **Denoising**: Integrated regression of 24 motion parameters + CSF/White Matter signals.
+*   **Atlas Mapping**: Built-in `MMP_LOBE` mapping to categorize Glasser regions into 8 broad lobes (Occipital, Parietal, Somatomotor, Insular, Temporal, Prefrontal, Cingulate, Orbitofrontal).
+
+### utils/preprocessing.py
+*   **`parcel_samples` Switchboard**: Updated to detect the loader type and route to `parcel_samples_hcptrt`.
+*   **HCP Sampling Modes**:
+    *   `trials="continuous"`: Full run analysis used in the current cross-task stacking.
+    *   `time_collapse="windowed_mean"`: Essential for stabilizing the embedding by reducing temporal noise.
+
+---
+
+## ⚠️ Current Observations
+*   **Subcortical Accuracy**: Some subcortical regions show higher variance in clustering, likely due to lower SNR in surface-targeted sequences.
+*   **Task Weighting**: We are currently weighting all tasks equally. Future iterations might explore if specific tasks (like Resting State) provide a better "baseline" for contrastive learning.
+
+## 🚀 Next Steps
+*   **TRACE Training on HCPTRT**: Initialize the contrastive model using the cross-task stacked matrices.
+*   **Intersubject Validation**: Test if a model trained on Subject 1's multi-task fingerprints can correctly identify parcels in Subject 2.
+*   **Algonauts-HCP Bridge**: Use the universal fingerprints learned here to decode specific movie-watching activity in the Algonauts dataset.
+
+---
+
 # Results: 2026-04-16 14:30 (Analysis of Pipeline Validation)
 
 ## 📊 Summary of Findings

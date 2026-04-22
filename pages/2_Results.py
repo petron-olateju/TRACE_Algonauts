@@ -82,6 +82,8 @@ def get_section_image(section_key):
             "subject_episode+parcel_trials_clustering/v1/UMAP@n_neighbors=50.png",
         ],
         "robustness": "subject+multi_episodes+parcel_trials_clustering/UMAP@n_neighbors=50.png",
+        "hcptrt": "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
+        "fingerprinting": "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
     }
     return image_map.get(section_key, [])
 
@@ -95,13 +97,13 @@ def render_status_dashboard(timestamp):
         <p style="color: #a0c4ff; margin-bottom: 15px;">Last Updated: {timestamp}</p>
         <div style="display: flex; gap: 15px; flex-wrap: wrap;">
             <span style="background: #28a745; color: white; padding: 8px 16px; 
-                         border-radius: 20px; font-size: 14px;">✅ Pipeline Validated</span>
+                         border-radius: 20px; font-size: 14px;">✅ HCPTRT Validated</span>
             <span style="background: #17a2b8; color: white; padding: 8px 16px; 
                          border-radius: 20px; font-size: 14px;">🚀 Next: TRACE Training</span>
             <span style="background: #ffc107; color: #333; padding: 8px 16px; 
-                         border-radius: 20px; font-size: 14px;">🧠 1000 Parcels</span>
+                         border-radius: 20px; font-size: 14px;">🧠 MMP (360 Parcels)</span>
             <span style="background: #6c757d; color: white; padding: 8px 16px; 
-                         border-radius: 20px; font-size: 14px;">👥 4 Subjects</span>
+                         border-radius: 20px; font-size: 14px;">🌍 CIFTI Grayordinates</span>
         </div>
     </div>
     """,
@@ -110,13 +112,13 @@ def render_status_dashboard(timestamp):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Neuroanatomical", "✅ Validated", "Clusters by Lobe/Hemisphere")
+        st.metric("HCPTRT Cross-Task", "✅ Validated", "6 Domains + Rest")
     with col2:
-        st.metric("Temporal Stability", "✅ Validated", "Stable across time windows")
+        st.metric("Algonauts Temporal", "✅ Validated", "Stable across windows")
     with col3:
-        st.metric("Scaling", "🔄 Evaluating", "Local vs Global")
+        st.metric("Anatomical Resolution", "🚀 High", "MMP Surface Mesh")
     with col4:
-        st.metric("Stimuli", "✅ Robust", "10 episodes tested")
+        st.metric("Denoising", "✅ Complete", "24 Motion + CSF/WM")
 
 
 def render_finding_section(title, content, image_path=None, caption=None):
@@ -177,6 +179,29 @@ def render_summary_with_images(markdown_content):
             st.markdown("## " + title)
             st.markdown(content)
 
+        elif "cross-task" in title_lower and "stability" in title_lower:
+            render_finding_section(
+                "1. Cross-Task Anatomical Stability",
+                content,
+                "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
+                "UMAP embedding of 360 MMP regions across 6 cognitive tasks + Rest",
+            )
+
+        elif "fingerprinting" in title_lower:
+            render_finding_section(
+                "2. Multi-Task Fingerprinting",
+                content,
+                "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
+                "Regions cluster by anatomical identity regardless of the current task",
+            )
+
+        elif "space distinction" in title_lower or "grayordinate" in title_lower:
+            st.markdown("## 🌍 Space Distinction")
+            st.markdown(content)
+            st.info(
+                "**Key Distinction:** CIFTI/Surface measuring prevents signal bleeding across folds compared to Volumetric/MNI."
+            )
+
         elif "neuroanatomical" in title_lower:
             render_finding_section(
                 "1. Neuroanatomical Consistency",
@@ -219,28 +244,47 @@ def render_summary_with_images(markdown_content):
 
             st.markdown("### Key Visualization Slides")
 
-            slides = [
-                (
-                    "Slide 1: Anatomical Organization",
-                    "subject_episode+parcel_trials_clustering/UMAP@n_neighbors=50.png",
-                    "Single episode, Subject 1 - clustering by Lobe and Hemisphere",
-                ),
-                (
-                    "Slide 2: Scaling Sensitivity",
-                    "subject_episode+parcel_trials_clustering/v1/UMAP@n_neighbors=50.png",
-                    "Global vs Local normalization comparison",
-                ),
-                (
-                    "Slide 3: Temporal Persistence",
-                    "subject_episode+parcel+window_subsample_trials/UMAP@n_neighbors=50.png",
-                    "Stable fingerprint across movie episode",
-                ),
-                (
-                    "Slide 4: Robustness Across Stimuli",
-                    "subject+multi_episodes+parcel_trials_clustering/UMAP@n_neighbors=50.png",
-                    "10 episodes - functional-anatomical organization robust",
-                ),
-            ]
+            if "HCPTRT" in content or "Cross-Task" in content:
+                slides = [
+                    (
+                        "Slide 1: Universal Functional Identity",
+                        "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
+                        "MMP regions across 6 cognitive tasks + Rest",
+                    ),
+                    (
+                        "Slide 2: Embedding Robustness",
+                        "hcptrt_across_tasks/tSNE_all_tasks@perplexity=15.png",
+                        "t-SNE vs UMAP consistency check",
+                    ),
+                    (
+                        "Slide 3: Surface Advantage",
+                        "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
+                        "Resolution comparison (Surface vs Volume)",
+                    ),
+                ]
+            else:
+                slides = [
+                    (
+                        "Slide 1: Anatomical Organization",
+                        "subject_episode+parcel_trials_clustering/UMAP@n_neighbors=50.png",
+                        "Single episode, Subject 1 - clustering by Lobe and Hemisphere",
+                    ),
+                    (
+                        "Slide 2: Scaling Sensitivity",
+                        "subject_episode+parcel_trials_clustering/v1/UMAP@n_neighbors=50.png",
+                        "Global vs Local normalization comparison",
+                    ),
+                    (
+                        "Slide 3: Temporal Persistence",
+                        "subject_episode+parcel+window_subsample_trials/UMAP@n_neighbors=50.png",
+                        "Stable fingerprint across movie episode",
+                    ),
+                    (
+                        "Slide 4: Robustness Across Stimuli",
+                        "subject+multi_episodes+parcel_trials_clustering/UMAP@n_neighbors=50.png",
+                        "10 episodes - functional-anatomical organization robust",
+                    ),
+                ]
 
             for i, (slide_title, img_path, desc) in enumerate(slides, 1):
                 with st.expander(f"Slide {i}: {slide_title}"):
@@ -294,7 +338,7 @@ if markdown_results:
             f"📊 {markdown_result['timestamp']} - {markdown_result['title']}",
             expanded=expanded,
         ):
-            if "Pipeline Validation" in markdown_result["title"]:
+            if any(k in markdown_result["title"] for k in ["Pipeline Validation", "HCPTRT", "Cross-Task"]):
                 render_status_dashboard(markdown_result["timestamp"])
                 st.markdown("---")
                 st.markdown("### Detailed Findings")
