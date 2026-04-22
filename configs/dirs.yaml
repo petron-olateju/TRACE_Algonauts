@@ -2,3 +2,7 @@ algonauts:
   dirs:
     fmri: "data/algonauts_2025.competitors/fmri"
     transcript: "data/algonauts_2025.competitors/stimuli/transcripts"
+
+hcptrt:
+  dirs:
+    fmri: "data/cneuromod.processed/fmriprep/hcptrt"

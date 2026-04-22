@@ -11,3 +11,15 @@ algonauts:
     - 2
     - 3
     - 5
+
+hcptrt:
+  params:
+    tr: 1.49
+    hrf_delay: 3
+    context_trs: 5
+  
+  subjects:
+    - 1
+
+  sessions:
+    - 1
