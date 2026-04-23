@@ -12,6 +12,7 @@ from nilearn import datasets
 from tqdm import tqdm
 
 from utils.dataloader import AlgonautsLoader, HCPTRTLoader
+from utils.loaders.parcel_maps import SCHAEFER_LOBE, get_lobe
 
 
 def pad_to_width(arr, target_width, pad_value=0):
@@ -131,6 +132,8 @@ def parcel_samples_algonauts(
     coordinates: List[np.ndarray] = []
     hemisphere: List[str] = []
     region: List[str] = []
+    lobe: List[str] = []
+    structure_type: List[str] = []
     parcel: List[str] = []
     season: List[int] = []
     episode: List[int] = []
@@ -161,8 +164,14 @@ def parcel_samples_algonauts(
         for p in range(n_parcels):
             h = parcel_desc[p + 1]["hemisphere"]
             r = parcel_desc[p + 1]["region"]
+            # Schaefer labels may include a numeric sub-index suffix (e.g. "Vis_1").
+            # Strip the trailing "_N" to get the clean network key for SCHAEFER_LOBE.
+            r_key = r.rsplit("_", 1)[0] if r[-1].isdigit() else r
+            l  = SCHAEFER_LOBE.get(r_key, r_key)
             hemisphere.extend([h] * multiplier)
             region.extend([r] * multiplier)
+            lobe.extend([l] * multiplier)
+            structure_type.extend(["cortical"] * multiplier)
             parcel.extend([f"{h}_{r}"] * multiplier)
 
         if split == "train":
@@ -179,9 +188,11 @@ def parcel_samples_algonauts(
 
     Y = pd.DataFrame(
         {
-            "hemisphere": hemisphere,
-            "region": region,
-            "parcel": parcel,
+            "hemisphere":     hemisphere,
+            "region":         region,
+            "lobe":           lobe,
+            "structure_type": structure_type,
+            "parcel":         parcel,
             "x": coords[:, 0],
             "y": coords[:, 1],
             "z": coords[:, 2],

@@ -81,112 +81,16 @@ def _load_cifti_surface(path: str) -> Tuple[np.ndarray, nib.Cifti2Image]:
 
 
 # ---------------------------------------------------------------------------
-# MMP area → lobe lookup
+# Parcel → lobe mappings (all atlases)
 # ---------------------------------------------------------------------------
-# Maps each Glasser MMP area name (without L_/R_ prefix) to a coarse lobe label.
-# Based on the 22 cortical lobes in Glasser et al. 2016, collapsed to 8 broad lobes,
-# plus subcortical structures.
-MMP_LOBE: Dict[str, str] = {
-    # Primary & early visual (occipital)
-    "V1":"occipital","V2":"occipital","V3":"occipital","V4":"occipital",
-    "V6":"occipital","V6A":"occipital","V7":"occipital","V8":"occipital",
-    "V3A":"occipital","V3B":"occipital","V3CD":"occipital",
-    "V4t":"occipital","LO1":"occipital","LO2":"occipital","LO3":"occipital",
-    "VMV1":"occipital","VMV2":"occipital","VMV3":"occipital",
-    "POS1":"occipital","POS2":"occipital","DVT":"occipital",
-    # Dorsal visual / parietal
-    "MST":"parietal","MT":"parietal","FST":"parietal","PH":"parietal",
-    "V6A":"parietal","IPS1":"parietal","MIP":"parietal","VIP":"parietal",
-    "LIPd":"parietal","LIPv":"parietal","AIP":"parietal",
-    "IP0":"parietal","IP1":"parietal","IP2":"parietal",
-    "7AL":"parietal","7Am":"parietal","7PC":"parietal","7PL":"parietal","7Pm":"parietal","7m":"parietal",
-    "5L":"parietal","5m":"parietal","5mv":"parietal",
-    "PCV":"parietal","PGi":"parietal","PGp":"parietal","PGs":"parietal",
-    "PF":"parietal","PFm":"parietal","PFt":"parietal","PFop":"parietal","PFcm":"parietal",
-    "TPOJ1":"parietal","TPOJ2":"parietal","TPOJ3":"parietal",
-    "RSC":"parietal",
-    # Somatomotor
-    "1":"somatomotor","2":"somatomotor","3a":"somatomotor","3b":"somatomotor","4":"somatomotor",
-    "6a":"somatomotor","6d":"somatomotor","6ma":"somatomotor","6mp":"somatomotor",
-    "6r":"somatomotor","6v":"somatomotor",
-    "FEF":"somatomotor","PEF":"somatomotor","55b":"somatomotor",
-    "SCEF":"somatomotor","MI":"somatomotor",
-    "43":"somatomotor","OP4":"somatomotor","OP1":"somatomotor","OP2-3":"somatomotor",
-    # Insular / opercular
-    "Ig":"insular","PI":"insular","PoI1":"insular","PoI2":"insular",
-    "AAIC":"insular","AVI":"insular","FOP1":"insular","FOP2":"insular",
-    "FOP3":"insular","FOP4":"insular","FOP5":"insular","RI":"insular",
-    "Pir":"insular","52":"insular",
-    # Auditory / temporal
-    "A1":"temporal","A4":"temporal","A5":"temporal",
-    "LBelt":"temporal","MBelt":"temporal","PBelt":"temporal",
-    "PSL":"temporal","SFL":"temporal","STGa":"temporal",
-    "STSda":"temporal","STSdp":"temporal","STSva":"temporal","STSvp":"temporal",
-    "STV":"temporal","TA2":"temporal",
-    "TE1a":"temporal","TE1m":"temporal","TE1p":"temporal",
-    "TE2a":"temporal","TE2p":"temporal",
-    "TF":"temporal","TGd":"temporal","TGv":"temporal",
-    "PHA1":"temporal","PHA2":"temporal","PHA3":"temporal","PHT":"temporal",
-    "FFC":"temporal","PIT":"temporal","VVC":"temporal",
-    "H":"temporal","EC":"temporal","PeEc":"temporal","PreS":"temporal","ProS":"temporal",
-    # Prefrontal
-    "8Ad":"prefrontal","8Av":"prefrontal","8BL":"prefrontal","8BM":"prefrontal","8C":"prefrontal",
-    "9a":"prefrontal","9m":"prefrontal","9p":"prefrontal",
-    "9-46d":"prefrontal","a9-46v":"prefrontal","p9-46v":"prefrontal",
-    "10d":"prefrontal","10pp":"prefrontal","10r":"prefrontal","10v":"prefrontal",
-    "a10p":"prefrontal","p10p":"prefrontal",
-    "46":"prefrontal","IFJa":"prefrontal","IFJp":"prefrontal","IFSa":"prefrontal","IFSp":"prefrontal",
-    "44":"prefrontal","45":"prefrontal","47l":"prefrontal","47m":"prefrontal","47s":"prefrontal",
-    "a47r":"prefrontal","p47r":"prefrontal","i6-8":"prefrontal","s6-8":"prefrontal",
-    # Cingulate / medial
-    "23c":"cingulate","23d":"cingulate","24dd":"cingulate","24dv":"cingulate",
-    "a24":"cingulate","a24pr":"cingulate","p24":"cingulate","p24pr":"cingulate",
-    "25":"cingulate","33pr":"cingulate","a32pr":"cingulate","p32":"cingulate",
-    "p32pr":"cingulate","d23ab":"cingulate","v23ab":"cingulate",
-    "d32":"cingulate","s32":"cingulate","31a":"cingulate","31pd":"cingulate","31pv":"cingulate",
-    # Orbitofrontal
-    "OFC":"orbitofrontal","11l":"orbitofrontal","13l":"orbitofrontal",
-    "pOFC":"orbitofrontal",
-    # Subcortical — mapped to their primary neuroanatomical association
-    # Basal ganglia: striatum + pallidum
-    "accumbens_left":"basal_ganglia","accumbens_right":"basal_ganglia",
-    "caudate_left":"basal_ganglia","caudate_right":"basal_ganglia",
-    "putamen_left":"basal_ganglia","putamen_right":"basal_ganglia",
-    "pallidum_left":"basal_ganglia","pallidum_right":"basal_ganglia",
-    # Limbic / temporal — hippocampal formation and amygdala
-    "hippocampus_left":"temporal","hippocampus_right":"temporal",
-    "amygdala_left":"temporal","amygdala_right":"temporal",
-    # Diencephalon — thalamus and hypothalamus
-    "thalamus_left":"diencephalon","thalamus_right":"diencephalon",
-    "diencephalon_left":"diencephalon","diencephalon_right":"diencephalon",
-    # Cerebellum
-    "cerebellum_left":"cerebellum","cerebellum_right":"cerebellum",
-    # Brainstem
-    "brainStem":"brainstem",
-}
-
-# ---------------------------------------------------------------------------
-# Cole-Anticevic (ca_parcels / ca_network) network -> lobe mapping
-# ---------------------------------------------------------------------------
-# Maps the network name portion of a ca_parcels label (after stripping the
-# trailing "-NN" parcel index) to a broad lobe / functional grouping.
-# Subcortical structure names (lower-cased) are looked up in MMP_LOBE first;
-# this dict covers the cortical network names only.
-CA_NETWORK_LOBE: Dict[str, str] = {
-    "Visual1":              "occipital",
-    "Visual2":              "occipital",
-    "Somatomotor":          "somatomotor",
-    "Auditory":             "temporal",
-    "Cingulo-Opercular":    "insular",
-    "Language":             "temporal",
-    "Default":              "prefrontal",
-    "Frontoparietal":       "parietal",
-    "Dorsal-Attention":     "parietal",
-    "Ventral-Attention":    "insular",
-    "Ventral-Multimodal":   "temporal",
-    "Posterior-Multimodal": "parietal",
-    "Orbito-Affective":     "orbitofrontal",
-}
+# Moved to utils/loaders/parcel_maps.py — imported here for use in
+# get_atlas_info() label parsing.
+from .parcel_maps import (
+    MMP_LOBE,
+    CA_NETWORK_LOBE,
+    SCHAEFER_LOBE,
+    get_lobe,
+)
 
 # ---------------------------------------------------------------------------
 # Available hcp_utils parcellations

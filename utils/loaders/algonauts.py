@@ -15,6 +15,8 @@ import nibabel as nib
 from nilearn import datasets
 from tqdm import tqdm
 
+from .parcel_maps import SCHAEFER_LOBE, get_lobe
+
 
 def _read_tsv(file_path: str) -> pd.DataFrame:
     """Read a TSV file into a pandas DataFrame."""
