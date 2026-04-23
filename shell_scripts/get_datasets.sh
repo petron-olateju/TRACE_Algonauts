@@ -12,5 +12,5 @@ datalad get fmri/
 cd ../
 datalad install https://github.com/courtois-neuromod/cneuromod.processed.git
 cd cneuromod.processed
-datalad get fmriprep/hcptrt/sub-*
-datalad get fmriprep/hcptrt/sourcedata/hcptrt/sub-*/ses-*/func/sub-*_ses-*_task-*_events.tsv
+datalad get fmriprep/hcptrt/sub-01/
+datalad get fmriprep/hcptrt/sourcedata/hcptrt/sub-01/ses-*/func/sub-01_ses-*_task-*_events.tsv
