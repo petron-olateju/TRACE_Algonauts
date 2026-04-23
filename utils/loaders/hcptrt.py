@@ -147,17 +147,45 @@ MMP_LOBE: Dict[str, str] = {
     # Orbitofrontal
     "OFC":"orbitofrontal","11l":"orbitofrontal","13l":"orbitofrontal",
     "pOFC":"orbitofrontal",
-    # Subcortical
-    "accumbens_left":"subcortical","accumbens_right":"subcortical",
-    "amygdala_left":"subcortical","amygdala_right":"subcortical",
-    "brainStem":"subcortical",
-    "caudate_left":"subcortical","caudate_right":"subcortical",
-    "cerebellum_left":"subcortical","cerebellum_right":"subcortical",
-    "diencephalon_left":"subcortical","diencephalon_right":"subcortical",
-    "hippocampus_left":"subcortical","hippocampus_right":"subcortical",
-    "pallidum_left":"subcortical","pallidum_right":"subcortical",
-    "putamen_left":"subcortical","putamen_right":"subcortical",
-    "thalamus_left":"subcortical","thalamus_right":"subcortical",
+    # Subcortical — mapped to their primary neuroanatomical association
+    # Basal ganglia: striatum + pallidum
+    "accumbens_left":"basal_ganglia","accumbens_right":"basal_ganglia",
+    "caudate_left":"basal_ganglia","caudate_right":"basal_ganglia",
+    "putamen_left":"basal_ganglia","putamen_right":"basal_ganglia",
+    "pallidum_left":"basal_ganglia","pallidum_right":"basal_ganglia",
+    # Limbic / temporal — hippocampal formation and amygdala
+    "hippocampus_left":"temporal","hippocampus_right":"temporal",
+    "amygdala_left":"temporal","amygdala_right":"temporal",
+    # Diencephalon — thalamus and hypothalamus
+    "thalamus_left":"diencephalon","thalamus_right":"diencephalon",
+    "diencephalon_left":"diencephalon","diencephalon_right":"diencephalon",
+    # Cerebellum
+    "cerebellum_left":"cerebellum","cerebellum_right":"cerebellum",
+    # Brainstem
+    "brainStem":"brainstem",
+}
+
+# ---------------------------------------------------------------------------
+# Cole-Anticevic (ca_parcels / ca_network) network -> lobe mapping
+# ---------------------------------------------------------------------------
+# Maps the network name portion of a ca_parcels label (after stripping the
+# trailing "-NN" parcel index) to a broad lobe / functional grouping.
+# Subcortical structure names (lower-cased) are looked up in MMP_LOBE first;
+# this dict covers the cortical network names only.
+CA_NETWORK_LOBE: Dict[str, str] = {
+    "Visual1":              "occipital",
+    "Visual2":              "occipital",
+    "Somatomotor":          "somatomotor",
+    "Auditory":             "temporal",
+    "Cingulo-Opercular":    "insular",
+    "Language":             "temporal",
+    "Default":              "prefrontal",
+    "Frontoparietal":       "parietal",
+    "Dorsal-Attention":     "parietal",
+    "Ventral-Attention":    "insular",
+    "Ventral-Multimodal":   "temporal",
+    "Posterior-Multimodal": "parietal",
+    "Orbito-Affective":     "orbitofrontal",
 }
 
 # ---------------------------------------------------------------------------
@@ -382,6 +410,10 @@ class HCPTRTLoader:
         parcel_coords = np.zeros((len(parcel_ids), 3), dtype=np.float32)
         parcel_desc   = {}
 
+        # Grayordinate indices 0–59411 are cortical surface vertices;
+        # indices 59412–91281 are subcortical voxels.
+        SUBCORTICAL_OFFSET = 59412
+
         for i, pid in enumerate(parcel_ids):
             mask     = labels == pid
             centroid = np.nanmean(all_coords[mask], axis=0)   # NaN-safe for subcortical
@@ -398,43 +430,88 @@ class HCPTRTLoader:
                 hemi     = "LH" if parts[0] == "L" else "RH"
                 # area_key for lobe lookup: strip "ROI" if it's there
                 area_key = "_".join(parts[1:-1]) if parts[-1] == "ROI" else "_".join(parts[1:])
-            
+
             # 2. Yeo/Schaefer style: "7Networks_LH_Vis_1"
             elif len(parts) > 1 and parts[1] in ("LH", "RH"):
                 hemi     = parts[1]
                 area_key = "_".join(parts[2:])
-            
-            # 3. Subcortical / Other: "Hippocampus_Left" or "thalamus-right"
+
+            # 3. Cole-Anticevic style: "NetworkName-NN_H-StructureOrCtx"
+            #    e.g. "Visual2-34_L-Ctx", "Cingulo-Opercular-30_L-Ctx",
+            #         "Visual1-13_L-Caudate", "Visual1-10_LR-Brainstem"
+            #    The last "_"-separated token encodes hemisphere (L/R/LR) and structure.
+            elif len(parts) >= 2 and re.match(r'^(L|R|LR)-', parts[-1]):
+                hemi_struct = parts[-1]                       # e.g. "L-Ctx", "LR-Brainstem"
+                hemi_code, structure = hemi_struct.split("-", 1)
+                if hemi_code == "L":
+                    hemi = "LH"
+                elif hemi_code == "R":
+                    hemi = "RH"
+                else:
+                    hemi = "bilateral"                        # LR = bilateral structure
+
+                # Network name is everything before the last "_", potentially with a
+                # trailing "-NN" parcel index. Strip the number to get the clean name,
+                # e.g. "Visual2-34" -> "Visual2", "Cingulo-Opercular-30" -> "Cingulo-Opercular".
+                network_raw = "_".join(parts[:-1])
+                network = re.sub(r'-\d+$', '', network_raw)
+
+                # Cortical parcels use "Ctx" as the structure — map to network name.
+                # Subcortical parcels carry the actual structure name (e.g. "Caudate",
+                # "Brainstem") — lower-case it for MMP_LOBE lookup.
+                if structure == "Ctx":
+                    area_key = network
+                else:
+                    area_key = structure.lower()
+
+            # 4. Subcortical / Other: "Hippocampus_Left" or "thalamus-right"
             else:
                 name_lower = name.lower()
                 if "left" in name_lower:
-                    hemi   = "LH"
-                    # For subcortical, area_key stays as name to match MMP_LOBE dict
+                    hemi     = "LH"
                     area_key = name
                 elif "right" in name_lower:
-                    hemi   = "RH"
+                    hemi     = "RH"
                     area_key = name
                 else:
-                    hemi   = "unknown"
+                    hemi     = "unknown"
                     area_key = name
 
-            # Map area → lobe using MMP_LOBE; fall back to area_key if unknown
-            region = MMP_LOBE.get(area_key, area_key)
-            
-            # If the lookup worked, we have a clean lobe name. 
-            # If not, and it was a subcortical with "left"/"right", 
-            # we might want to clean the region name for display.
-            if region == area_key:
-                # Cleanup "left"/"right" from display name if it wasn't in the dict
-                region = re.sub(r'[_-]?left[_-]?', '', region, flags=re.IGNORECASE)
-                region = re.sub(r'[_-]?right[_-]?', '', region, flags=re.IGNORECASE)
+            # Resolve region and lobe.
+            # Priority order:
+            #   1. CA_NETWORK_LOBE  -- for ca_parcels / ca_network cortical network names
+            #      (e.g. "Visual2" -> "occipital", "Cingulo-Opercular" -> "insular")
+            #   2. MMP_LOBE         -- for MMP area keys and subcortical structure names
+            #   3. area_key itself  -- cleaned-up fallback
+            if area_key in CA_NETWORK_LOBE:
+                region = area_key                       # clean network name, no number
+                lobe   = CA_NETWORK_LOBE[area_key]
+            elif area_key in MMP_LOBE:
+                region = MMP_LOBE[area_key]
+                lobe   = MMP_LOBE[area_key]
+            else:
+                # Fallback: strip residual "left"/"right" suffixes from display name
+                region = re.sub(r'[_-]?left[_-]?', '', area_key, flags=re.IGNORECASE)
+                region = re.sub(r'[_-]?right[_-]?', '', region,   flags=re.IGNORECASE)
                 region = region.strip("-_ ")
+                lobe   = region
+
+            # structure_type: derived from grayordinate index range.
+            # Cortical grayordinates occupy indices 0–59411 in the 91k array;
+            # subcortical voxels occupy indices 59412–91281.
+            grayordinate_indices = np.where(mask)[0]
+            if len(grayordinate_indices) > 0 and grayordinate_indices[0] >= SUBCORTICAL_OFFSET:
+                structure_type = "subcortical"
+            else:
+                structure_type = "cortical"
 
             parcel_desc[int(pid)] = {
-                "name":       name,
-                "hemisphere": hemi,
-                "region":     region,
-                "coords":     centroid,
+                "name":           name,
+                "hemisphere":     hemi,
+                "region":         region,
+                "lobe":           lobe,
+                "structure_type": structure_type,
+                "coords":         centroid,
             }
 
         return {

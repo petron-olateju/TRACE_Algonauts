@@ -275,6 +275,8 @@ def parcel_samples_hcptrt(
     coordinates: List[np.ndarray] = []
     hemisphere: List[str] = []
     region: List[str] = []
+    lobe: List[str] = []
+    structure_type: List[str] = []
     parcel: List[str] = []
     session_list: List[int] = []
     run_list: List[int] = []
@@ -331,8 +333,12 @@ def parcel_samples_hcptrt(
             for pid in parcel_ids:
                 h = parcel_desc[pid]["hemisphere"]
                 r = parcel_desc[pid]["region"]
+                l = parcel_desc[pid]["lobe"]
+                st = parcel_desc[pid]["structure_type"]
                 hemisphere.append(h)
                 region.append(r)
+                lobe.append(l)
+                structure_type.append(st)
                 parcel.append(f"{h}_{r}")
 
     X      = np.vstack(fmri_response)
@@ -346,9 +352,11 @@ def parcel_samples_hcptrt(
     assert len(run_list) == n_total
 
     Y_data = {
-        "hemisphere": hemisphere,
-        "region":     region,
-        "parcel":     parcel,
+        "hemisphere":     hemisphere,
+        "region":         region,
+        "lobe":           lobe,
+        "structure_type": structure_type,
+        "parcel":         parcel,
         "x":      coords[:, 0],
         "y":      coords[:, 1],
         "z":      coords[:, 2],
