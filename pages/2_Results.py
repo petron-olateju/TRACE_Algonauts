@@ -179,21 +179,78 @@ def render_summary_with_images(markdown_content):
             st.markdown("## " + title)
             st.markdown(content)
 
-        elif "cross-task" in title_lower and "stability" in title_lower:
+        elif "cross-task" in title_lower and "methodology" in title_lower:
+            st.markdown("## 🧬 Methodology: Cross-Task Signal Stacking")
+            st.markdown(content)
+            st.info("""
+            **How it works**: 
+            1. Extract the temporal BOLD signal for each parcel from 6 distinct tasks + Resting state.
+            2. Concatenate these signals horizontally along the time axis.
+            3. The resulting 'super-timecourse' represents the parcel's behavior across a wide cognitive landscape.
+            4. This stacked vector is used as the input for dimensionality reduction (PCA/UMAP).
+            """)
+
+        elif "comparative parcellation" in title_lower or "multi-atlas" in title_lower:
+            st.markdown("## 🗺️ Comparative Parcellation Analysis (HCPTRT)")
+            st.markdown(content)
+            
+            tabs = st.tabs(["Glasser MMP", "Cole-Anticevic", "Schaefer (Yeo)"])
+            
+            with tabs[0]:
+                render_finding_section(
+                    "MMP (360 Regions)",
+                    "Highest cortical resolution on the surface mesh.",
+                    "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=5.png",
+                    "MMP functional fingerprinting across tasks"
+                )
+            
+            with tabs[1]:
+                col1, col2 = st.columns(2)
+                with col1:
+                    render_finding_section(
+                        "CA Network-level",
+                        "Coarse network groupings (Visual, Somatomotor, etc.)",
+                        "hcptrt_across_tasks/ca_network/UMAP_all_tasks@n_neighbors=5.png"
+                    )
+                with col2:
+                    render_finding_section(
+                        "CA Parcel-level",
+                        "Fine-grained parcels with subcortical structures.",
+                        "hcptrt_across_tasks/ca_parcels/UMAP_all_tasks@n_neighbors=5.png"
+                    )
+                st.info("✓ Cole-Anticevic atlases provide the clearest view of the Cortical-Subcortical boundary.")
+
+            with tabs[2]:
+                render_finding_section(
+                    "Schaefer/Yeo",
+                    "Validated against standard 7 and 17 network functional boundaries.",
+                    "hcptrt_across_tasks/yeo7/UMAP_all_tasks@n_neighbors=5.png"
+                )
+
+        elif "anatomical vs. functional" in title_lower:
             render_finding_section(
-                "1. Cross-Task Anatomical Stability",
+                "3. Anatomical vs. Functional Clustering",
                 content,
-                "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
-                "UMAP embedding of 360 MMP regions across 6 cognitive tasks + Rest",
+                "hcptrt_across_tasks/ca_parcels/UMAP_all_tasks@n_neighbors=5.png",
+                "UMAP visualization showing clear separation of Lobe and Structure Type (Cortical vs Subcortical)"
             )
 
-        elif "fingerprinting" in title_lower:
-            render_finding_section(
-                "2. Multi-Task Fingerprinting",
-                content,
-                "hcptrt_across_tasks/UMAP_all_tasks@n_neighbors=15.png",
-                "Regions cluster by anatomical identity regardless of the current task",
-            )
+        elif "manifold insights" in title_lower or "umap vs pca" in title_lower:
+            st.markdown("## 🌀 Manifold Insights: UMAP vs PCA")
+            col1, col2 = st.columns(2)
+            with col1:
+                render_finding_section(
+                    "PCA (Linear)",
+                    "Separates global axes of variance (e.g., Sensory vs Association).",
+                    "hcptrt_across_tasks/ca_parcels/pca_all_tasks.png"
+                )
+            with col2:
+                render_finding_section(
+                    "UMAP (Non-linear)",
+                    "Reveals tight functional 'islands' and manifold structure.",
+                    "hcptrt_across_tasks/ca_parcels/UMAP_all_tasks@n_neighbors=5.png"
+                )
+            st.success("✓ Result: UMAP provides superior functional system isolation for stacked cross-task data.")
 
         elif "space distinction" in title_lower or "grayordinate" in title_lower:
             st.markdown("## 🌍 Space Distinction")

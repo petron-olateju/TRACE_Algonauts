@@ -15,7 +15,7 @@ learning framework that exploits the multi-trial structure of neuroscience exper
 Originally developed for cellular recordings (calcium imaging, Neuropixels) in mouse brains, TRACE has been 
 shown to capture response characteristics and identify two-dimensional structure.
 
-This project extends TRACE to the **macroscopic scale of human neuroimaging** using large-scale fMRI data.
+This project extends TRACE to the **macroscopic scale of human neuroimaging** using large-scale fMRI data from both naturalistic stimuli (**Algonauts**) and controlled cognitive tasks (**HCP Test-Retest**).
 """)
 
 st.markdown("---")
@@ -24,9 +24,9 @@ st.header("Objective")
 
 st.markdown("""
 Produce two-dimensional embeddings that:
-- Capture functionally relevant variations
-- Identify clusters of regions responsive to specific stimulus modalities
-- Group spatially close or functionally connected parcels together
+- Capture functionally relevant variations across diverse cognitive domains.
+- Identify "Universal Functional Fingerprints" that are stable across tasks.
+- Group spatially close or functionally connected parcels together using surface-based anatomy.
 
 This establishes TRACE as a novel tool for neuroimaging, moving beyond the original domain 
 of cellular recordings.
@@ -34,34 +34,46 @@ of cellular recordings.
 
 st.markdown("---")
 
-st.header("Dataset")
+st.header("Datasets")
 
-col1, col2, col3 = st.columns(3)
+tab1, tab2 = st.tabs(["Algonauts (Naturalistic)", "HCPTRT (Cross-Task)"])
 
-with col1:
-    st.metric("Subjects", "4")
+with tab1:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Subjects", "4")
+    with col2:
+        st.metric("Movie Duration", "~80 hours")
+    with col3:
+        st.metric("Brain Regions", "1,000")
+    st.markdown("""
+    - **Focus**: Continuous responses to complex, multimodal stimuli (Friends, Movie10).
+    - **Parcellation**: Schaefer 2018 (Volumetric).
+    """)
 
-with col2:
-    st.metric("Movie Duration", "~80 hours")
-
-with col3:
-    st.metric("Brain Regions", "1,000")
-
-st.markdown("""
-- **Data source**: Algonauts naturalistic movie dataset
-- **Parcellation**: Schaefer 2018 (7 networks, 1000 parcels)
-- **Modalities**: Visual, auditory, language (multimodal)
-""")
+with tab2:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Subjects", "46 (Test-Retest)")
+    with col2:
+        st.metric("Tasks Stacked", "6 + Rest")
+    with col3:
+        st.metric("Grayordinates", "91,282")
+    st.markdown("""
+    - **Focus**: Universal functional fingerprinting by stacking signals horizontally across time.
+    - **Methodology**: **Horizontal Stacking** of Motor, Gambling, WM, Social, Emotion, and Rest signals.
+    - **Parcellation**: Glasser MMP (360), Cole-Anticevic, and Schaefer (Surface/CIFTI).
+    """)
 
 st.markdown("---")
 
 st.header("Current Status")
 
-st.info("Project in early stages - TRACE framework being applied to human fMRI data.")
+st.success("Universal functional fingerprinting successfully validated on the HCPTRT dataset.")
 
 st.markdown("---")
 
-st.caption("Based on: TRACE original paper + Algonauts 2025 dataset")
+st.caption("Based on: TRACE original paper + Algonauts 2025 dataset + HCP Test-Retest")
 
 st.sidebar.markdown("""
 **Home**

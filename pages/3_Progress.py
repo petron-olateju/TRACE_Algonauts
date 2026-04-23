@@ -8,153 +8,95 @@ st.header("Methodology")
 
 st.markdown("""
 This document outlines the TRACE pipeline for generating low-dimensional embeddings 
-from human fMRI data.
+from human fMRI data across multiple datasets and anatomical resolutions.
 """)
 
 st.markdown("---")
 
-st.subheader("1. Data Acquisition")
+st.subheader("1. Data Acquisition & Resolution")
+
+tab1, tab2 = st.tabs(["Algonauts (Volumetric)", "HCPTRT (Surface/CIFTI)"])
+
+with tab1:
+    st.markdown("""
+    - **Source**: Algonauts 2025 naturalistic movie dataset
+    - **Resolution**: MNI152 Volumetric (2mm/3mm)
+    - **Parcellation**: Schaefer 1000 (7 networks)
+    - **Loader**: `AlgonautsLoader` (HDF5 based)
+    """)
+
+with tab2:
+    st.markdown("""
+    - **Source**: HCP Test-Retest Dataset
+    - **Resolution**: **CIFTI Grayordinates** (91k vertices/voxels)
+    - **Parcellation**: Multi-atlas support (MMP, Cole-Anticevic, Yeo)
+    - **Loader**: `HCPTRTLoader` (Direct `.dtseries.nii` loading)
+    - **Denoising**: 24 Motion Regressors + CSF/White Matter Denoising
+    """)
+
+st.markdown("---")
+
+st.subheader("2. Universal Functional Fingerprinting (HCPTRT)")
 
 st.markdown("""
-- **Source**: Algonauts 2025 naturalistic movie dataset
-- **Subjects**: 4 participants
-- **Stimulus**: ~80 hours of multimodal movies (visual, auditory)
-- **Recording**: fMRI (TR = 1.49s)
-- **Parcellation**: Schaefer 1000 (7 networks)
+The core methodology for establishing a universal brain representation involves **Horizontal Signal Stacking**.
+""")
+
+st.info("""
+**Cross-Task Stacking Process**:
+1. **Task Selection**: Motor, Gambling, Working Memory, Social, Emotion, and Resting State.
+2. **Temporal Concatenation**: Signals from all tasks are concatenated horizontally for each parcel.
+3. **Identity Extraction**: Dimensionality reduction (UMAP) extracts the core features that are invariant across these tasks.
+4. **Validation**: We confirm that parcels from the same anatomical region cluster together despite the diverse cognitive demands of the stacked signal.
 """)
 
 st.markdown("---")
 
-st.subheader("1.5. Data Loader Architecture")
+st.subheader("3. Comparative Atlas Architecture")
 
 st.markdown("""
-- **AlgonautsLoader Class**: Object-oriented dataloader for Algonauts 2025 dataset
-- **Extensible Design**: YAML-based configs under `algonauts` key, ready for HCP
-- **Key Features**:
-  - `self.configs` stores merged configs (dirs, params, subjects)
-  - Methods for loading fMRI, transcripts, and epochs
-  - Simple instantiation: `AlgonautsLoader(dataset="algonauts", split="train")`
-- **Usage**:
-  ```python
-  from utils.dataloader import get_default_dataset
-  dataset = get_default_dataset()
-  subject_data = dataset.load_episode_fmri(subject=1, split="train")
-  ```
+To ensure the TRACE framework is robust to anatomical definitions, we implemented a centralized mapping system in `utils/loaders/parcel_maps.py`.
 """)
 
-st.markdown("---")
-
-st.subheader("2. Response Matrix Construction")
-
-st.markdown("""
-Two approaches implemented in `notebook.ipynb` ("Movie Scenes Response Matrix Section"):
-""")
-
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown("""
-**Approach 1: Scene-level**
-- Trial unit: Movie scene (e.g., s01e02a)
-- Output shape: (n_subjects, 482, 1000)
-- Context window: Full scene timecourse
-- HRF delay: 3 TRs
-
-*Treats each movie scene as one trial. Extracts full fMRI timecourse (482 TRs).*
-""")
+    st.markdown("**Glasser MMP**")
+    st.caption("360 fine-grained cortical regions. Highest resolution for fingerprinting.")
 
 with col2:
-    st.markdown("""
-**Approach 2: Word-level**
-- Trial unit: Individual words from transcript
-- Output shape: (n_words, 10, 1000)
-- Context window: 10 TRs (±5 around word)
-- HRF delay: 3 TRs
+    st.markdown("**Cole-Anticevic**")
+    st.caption("Includes subcortical structures. Ideal for cortical-subcortical boundary analysis.")
 
-*Uses transcript word timings. Each word becomes a trial with ±5 TRs around onset.*
-""")
+with col3:
+    st.markdown("**Schaefer (Yeo)**")
+    st.caption("Standard functional networks. Used for validation against literature.")
+
+st.markdown("---")
+
+st.subheader("4. TRACE Contrastive Learning Status")
 
 st.markdown("""
----
-
-**Summary Table**
-
-| Aspect | Approach 1: Scene-level | Approach 2: Word-level |
-|--------|------------------------|------------------------|
-| Trial unit | Movie scene | Individual words |
-| Output shape | (4, 482, 1000) | (n_words, 10, 1000) |
-| Context window | Full scene | 10 TRs |
-| Implementation | notebook lines 1102-1127 | notebook lines 1158-1228 |
-
-**For TRACE**: Both preserve multi-trial structure - either could work depending on whether 
-we treat scenes or words as repeated conditions for positive pair generation.
-
-**Reference**: [notebook.ipynb](https://github.com/petron-olateju/TRACE_Algonauts/blob/main/notebook.ipynb)
-
-**Repository**: [TRACE_Algonauts](https://github.com/petron-olateju/TRACE_Algonauts)
+**Current Strategy**:
+- **Positive Pairs**: Generated by averaging across stacked task subsets or test-retest runs.
+- **Negative Pairs**: Other brain regions within the same task-stack.
+- **Embedding**: Learning a non-linear manifold that preserves functional identity.
 """)
 
 st.markdown("---")
 
-st.subheader("3. TRACE Contrastive Learning")
+st.header("Current Project Status")
+
+st.success("Milestone: Multi-atlas pipeline and Cross-task validation complete.")
 
 st.markdown("""
-**Core Innovation**: Generate positive pairs by averaging across different subsets of a unit's trials.
-
-**Process**:
-1. For each brain region, sample multiple trial subsets
-2. Average responses within each subset → creates positive pairs
-3. Use contrastive loss to learn a 2D embedding
-4. Embedding captures response characteristics
-
-**Goal**: Identify two-dimensional structure in neural responses.
-""")
-
-st.markdown("---")
-
-st.subheader("4. Analysis & Visualization")
-
-st.markdown("""
-- **2D Embeddings**: Visualize brain regions in low-dimensional space
-- **Clustering**: Identify regions with similar response profiles
-- **Organization**: Group spatially proximate or functionally connected parcels
-
-*Analysis methods in development...*
-""")
-
-st.markdown("---")
-
-st.subheader("1.6. HCPTRT Loader Architecture")
-
-st.markdown("""
-- **HCPTRTLoader Class**: Advanced loader for HCP Test-Retest (CIFTI) dataset
-- **CIFTI & Surface Support**: Handles 91k grayordinates (Surface Mesh + MNI subcortex)
-- **Key Features**:
-  - `hcp_utils` integration for on-the-fly parcellation (MMP, Yeo, Cole-Anticevic)
-  - Automatic confound denoising (Motion, CSF, WM)
-  - Cross-task stacking support (Motor, Gambling, WM, Social, Emotion, Rest)
-- **Usage**:
-  ```python
-  from utils.dataloader import get_hcptrt_loader
-  dataset = get_hcptrt_loader()
-  bold = dataset.load_fmri_responses(subject="sub-01", task="motor", parcellate=True)
-  ```
-""")
-
-st.markdown("---")
-
-st.header("Current Status")
-
-st.success("Universal functional fingerprinting validated across tasks")
-
-st.markdown("""
-| Component | Status |
-|----------|--------|
-| Algonauts Loader Architecture | ✅ Complete |
-| HCPTRT Loader Architecture | ✅ Complete (CIFTI/Surface) |
-| fMRI Data Loading | ✅ Complete |
-| Cross-Task Validation | ✅ Complete (6 Tasks) |
-| TRACE Framework | 🔄 Training Initialized |
+| Component | Status | Target Dataset |
+|----------|--------|----------------|
+| Algonauts Loader Architecture | ✅ Complete | Algonauts |
+| HCPTRT Loader Architecture | ✅ Complete | HCPTRT |
+| Cross-Task Signal Stacking | ✅ Validated | HCPTRT |
+| Surface-Based Parcellation | ✅ Complete | HCPTRT |
+| TRACE Contrastive Training | 🔄 Initializing | Both |
 """)
 
 st.markdown("---")
