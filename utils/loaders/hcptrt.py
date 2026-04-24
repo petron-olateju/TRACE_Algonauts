@@ -169,7 +169,7 @@ class HCPTRTLoader:
 
     # Tasks available in hcptrt
     TASKS = [
-        "emotion", "gambling", "language",
+        "emotion", "gambling", "language", "restingstate",
         "motor", "relational", "social", "wm"
     ]
 
