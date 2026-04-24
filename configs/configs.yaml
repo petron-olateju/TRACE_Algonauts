@@ -17,6 +17,7 @@ hcptrt:
     tr: 1.49
     hrf_delay: 3
     context_trs: 5
+    parcellation: 'ca_parcels'
   
   subjects:
     - 1
@@ -24,7 +25,7 @@ hcptrt:
   sessions:
     - 1
 
-  tsks:
+  tasks:
     - motor
     - gambling
     - wm
