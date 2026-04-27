@@ -56,20 +56,28 @@ with tab2:
     with col1:
         st.metric("Subjects", "46 (Test-Retest)")
     with col2:
-        st.metric("Tasks Stacked", "6 + Rest")
+        st.metric("Tasks Stacked", "8 Tasks")
     with col3:
         st.metric("Grayordinates", "91,282")
     st.markdown("""
     - **Focus**: Universal functional fingerprinting by stacking signals horizontally across time.
-    - **Methodology**: **Horizontal Stacking** of Motor, Gambling, WM, Social, Emotion, and Rest signals.
-    - **Parcellation**: Glasser MMP (360), Cole-Anticevic, and Schaefer (Surface/CIFTI).
+    - **Methodology**: **Horizontal Stacking** of Motor, Gambling, WM, Social, Emotion, Language, Relational, and Rest signals.
+    - **Parcellation**: Multi-atlas support (Glasser MMP, Cole-Anticevic, Schaefer/Yeo) on CIFTI surface.
+    - **Lobe Mapping**: 12 standardized labels across all atlases for unified analysis.
+    - **Structure Detection**: Automatic cortical/subcortical classification via grayordinate indices.
     """)
 
 st.markdown("---")
 
 st.header("Current Status")
 
-st.success("Universal functional fingerprinting successfully validated on the HCPTRT dataset.")
+st.success("Multi-atlas functional fingerprinting framework validated with centralized lobe mapping system.")
+
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Atlas Systems", "3", "MMP, CA, Schaefer")
+with col2:
+    st.metric("Lobe Labels", "12", "Unified mapping")
 
 st.markdown("---")
 

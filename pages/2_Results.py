@@ -101,9 +101,13 @@ def render_status_dashboard(timestamp):
             <span style="background: #17a2b8; color: white; padding: 8px 16px; 
                          border-radius: 20px; font-size: 14px;">🚀 Next: TRACE Training</span>
             <span style="background: #ffc107; color: #333; padding: 8px 16px; 
-                         border-radius: 20px; font-size: 14px;">🧠 MMP (360 Parcels)</span>
+                         border-radius: 20px; font-size: 14px;">🧠 Multi-Atlas Framework</span>
             <span style="background: #6c757d; color: white; padding: 8px 16px; 
                          border-radius: 20px; font-size: 14px;">🌍 CIFTI Grayordinates</span>
+            <span style="background: #6610f2; color: white; padding: 8px 16px; 
+                         border-radius: 20px; font-size: 14px;">🗺️ 12 Lobe Labels</span>
+            <span style="background: #e83e8c; color: white; padding: 8px 16px; 
+                         border-radius: 20px; font-size: 14px;">🔬 Cortical/Subcortical</span>
         </div>
     </div>
     """,
@@ -114,11 +118,11 @@ def render_status_dashboard(timestamp):
     with col1:
         st.metric("HCPTRT Cross-Task", "✅ Validated", "6 Domains + Rest")
     with col2:
-        st.metric("Algonauts Temporal", "✅ Validated", "Stable across windows")
+        st.metric("Multi-Atlas Framework", "✅ Complete", "MMP, CA, Schaefer")
     with col3:
-        st.metric("Anatomical Resolution", "🚀 High", "MMP Surface Mesh")
+        st.metric("Lobe Mapping System", "✅ Complete", "12 Standardized Labels")
     with col4:
-        st.metric("Denoising", "✅ Complete", "24 Motion + CSF/WM")
+        st.metric("Structure Detection", "✅ Complete", "Cortical/Subcortical")
 
 
 def render_finding_section(title, content, image_path=None, caption=None):

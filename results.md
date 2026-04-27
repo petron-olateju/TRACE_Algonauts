@@ -1,3 +1,389 @@
+# Results: 2026-04-17 22:00 (Multi-Atlas Data Loading Enhancements)
+
+## 📊 Summary of Findings
+The `streamlit` branch introduces comprehensive data loading enhancements for multi-atlas analysis across the HCPTRT dataset, establishing a unified framework for brain region classification and functional fingerprinting.
+
+### Key Improvements
+- **Multi-Atlas Support**: Unified framework for Glasser MMP, Cole-Anticevic (CA), and Schaefer (Yeo 7/17) parcellations
+- **Centralized Lobe Mapping**: 12 standardized lobe labels (occipital, parietal, temporal, prefrontal, somatomotor, insular, cingulate, orbitofrontal, basal_ganglia, diencephalon, cerebellum, brainstem)
+- **Enhanced HCPTRT Loader**: Resting state task added, advanced label parsing for 4 naming conventions, automatic cortical/subcortical detection via grayordinate indices
+- **Metadata Expansion**: Parcel descriptions now include `lobe` and `structure_type` fields for granular functional analysis
+- **CLI Preprocessing**: Batch processing script for HCPTRT data with configurable parcellation
+- **Streamlined Setup**: Shell scripts for environment and dataset initialization via Datalad
+
+---
+
+## 🚀 Technical Implementation: Data Loading Enhancements
+
+### 2.1 Centralized Atlas Mappings (`utils/loaders/parcel_maps.py`)
+
+The new `parcel_maps.py` module (227 lines) serves as the single source of truth for region-to-lobe mappings across all datasets and loaders.
+
+**Lobe Label Conventions:**
+
+| Lobe | Description |
+|------|-------------|
+| `occipital` | Primary and association visual cortex |
+| `parietal` | Parietal cortex (dorsal visual, attention, somatosensory association) |
+| `temporal` | Lateral and medial temporal cortex; hippocampus; amygdala |
+| `prefrontal` | Lateral and medial prefrontal cortex; default-mode prefrontal nodes |
+| `somatomotor` | Primary motor and somatosensory cortex; premotor areas |
+| `insular` | Insular and opercular cortex; salience / cingulo-opercular network |
+| `cingulate` | Anterior and posterior cingulate cortex |
+| `orbitofrontal` | Orbitofrontal cortex; limbic network nodes |
+| `basal_ganglia` | Striatum (caudate, putamen, accumbens) and pallidum |
+| `diencephalon` | Thalamus and hypothalamus |
+| `cerebellum` | Cerebellar cortex and deep nuclei |
+| `brainstem` | Brainstem structures |
+
+**Master Registry:**
+
+```python
+PARCELLATION_MAP: Dict[str, Dict[str, str]] = {
+    "mmp":        MMP_LOBE,
+    "yeo7":       {},          # No lobe sub-division for Yeo networks
+    "yeo17":      {},
+    "ca_parcels": CA_NETWORK_LOBE,
+    "ca_network": CA_NETWORK_LOBE,
+    "schaefer":   SCHAEFER_LOBE,
+    "algonauts":  SCHAEFER_LOBE,
+}
+```
+
+**Utility Function:**
+
+```python
+def get_lobe(parcellation: str, region_key: str, fallback: str = "") -> str:
+    """Look up the lobe label for a region key in a given parcellation."""
+```
+
+The function uses a two-tier fallback: first checks the parcellation-specific map, then falls back to `MMP_LOBE` for subcortical structures.
+
+---
+
+### 2.2 Enhanced HCPTRT Loader (`utils/loaders/hcptrt.py`)
+
+**Task List Expansion:**
+
+The `TASKS` list was expanded from 7 to 8 tasks, adding `restingstate`:
+
+```python
+TASKS = [
+    "emotion", "gambling", "language", "restingstate",  # NEW: restingstate added
+    "motor", "relational", "social", "wm"
+]
+```
+
+**Advanced Label Parsing (4 Naming Conventions):**
+
+The `get_atlas_info()` method now parses 4 distinct parcel naming conventions:
+
+1. **Glasser/MMP Style**: `L_V1_ROI` or `R_46_ROI`
+2. **Yeo/Schaefer Style**: `7Networks_LH_Vis_1`
+3. **Cole-Anticevic Style**: `Visual2-34_L-Ctx`, `Cingulo-Opercular-30_L-Caudate`
+4. **Subcortical Style**: `Hippocampus_Left`, `thalamus-right`
+
+**Structure Type Detection:**
+
+```python
+SUBCORTICAL_OFFSET = 59412
+
+for i, pid in enumerate(parcel_ids):
+    mask = labels == pid
+    grayordinate_indices = np.where(mask)[0]
+    if len(grayordinate_indices) > 0 and grayordinate_indices[0] >= SUBCORTICAL_OFFSET:
+        structure_type = "subcortical"
+    else:
+        structure_type = "cortical"
+```
+
+**New Metadata Fields:**
+
+Each parcel now includes:
+- `lobe`: Resolved lobe label from the mapping tables
+- `structure_type`: Either `"cortical"` or `"subcortical"`
+- `hemisphere`: `LH`, `RH`, or `"bilateral"` for mid-sagittal structures
+
+---
+
+### 2.3 Preprocessing Pipeline (`utils/preprocessing.py`)
+
+**HCPTRT Preprocessing with Lobe Metadata:**
+
+```python
+for pid in parcel_ids:
+    h = parcel_desc[pid]["hemisphere"]
+    r = parcel_desc[pid]["region"]
+    l = parcel_desc[pid]["lobe"]      # From get_atlas_info()
+    st = parcel_desc[pid]["structure_type"]  # From grayordinate detection
+    hemisphere.append(h)
+    region.append(r)
+    lobe.append(l)
+    structure_type.append(st)
+    parcel.append(f"{h}_{r}")
+```
+
+**DataFrame Output:**
+
+The resulting `Y` DataFrame now includes `lobe` and `structure_type` columns:
+
+```python
+Y_data = {
+    "hemisphere":     hemisphere,
+    "region":         region,
+    "lobe":           lobe,
+    "structure_type": structure_type,
+    "parcel":         parcel,
+    "x":      coords[:, 0],
+    "y":      coords[:, 1],
+    "z":      coords[:, 2],
+    "radius": np.sqrt(coords[:, 0]**2 + coords[:, 1]**2 + coords[:, 2]**2),
+    "session": session_list,
+    "run":     run_list,
+    "task":   [task] * n_total,
+}
+```
+
+**Sanity Checks Added:**
+
+```python
+n_total = X.shape[0]
+assert len(hemisphere) == n_total, f"hemisphere len {len(hemisphere)} != X rows {n_total}"
+assert coords.shape[0] == n_total, f"coords rows {coords.shape[0]} != X rows {n_total}"
+```
+
+---
+
+### 2.4 CLI Preprocessing Script (`main.py`)
+
+A new command-line interface was added for batch preprocessing of HCPTRT data.
+
+**Usage:**
+
+```bash
+python main.py <mode> <dataset> <subject>
+
+# Modes: preprocessing, training
+# Datasets: hcptrt, algonauts
+# Subject: e.g., 01 or sub-01
+
+# Example: Preprocess HCPTRT data for subject 01
+python main.py preprocessing hcptrt 01
+```
+
+**Processing Pipeline:**
+
+For each task-session-run combination:
+1. Load BOLD data via `HCPTRTLoader`
+2. Generate X, Y using `parcel_samples_hcptrt()` with `trials="continuous"`
+3. Save outputs to `dataset/hcptrt/{subject}/{session}/run-{run:02d}/`
+
+---
+
+### 2.5 Configuration Updates (`configs/configs.yaml`)
+
+**HCPTRT Configuration Changes:**
+
+| Parameter | Old Value | New Value |
+|-----------|----------|-----------|
+| `parcellation` | `'mmp'` (Glasser 360) | `'ca_parcels'` (Cole-Anticevic) |
+| `tasks` | 7 tasks (no restingstate) | 8 tasks (+ `restingstate`) |
+
+**Updated Config:**
+
+```yaml
+hcptrt:
+  params:
+    tr: 1.49
+    hrf_delay: 3
+    context_trs: 5
+    parcellation: 'ca_parcels'   # Changed from 'mmp'
+  
+  subjects: [1]
+  sessions: [1]
+
+  tasks:
+    - motor
+    - gambling
+    - wm
+    - restingstate    # NEW task added
+    - social
+    - emotion
+    - language
+    - relational
+```
+
+---
+
+### 2.6 Dataset Setup Scripts (`shell_scripts/`)
+
+**`datalad_setup.sh`** - Installs NeuroDebian repository and required tools:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Install NeuroDebian repo
+. /etc/os-release
+wget -O- http://neuro.debian.net/lists/${VERSION_CODENAME}.de-fzj.libre | sudo tee /etc/apt/sources.list.d/neurodebian.sources.list
+sudo wget -q -O/etc/apt/trusted.gpg.d/neuro.debian.net.asc https://neuro.debian.net/_static/neuro.debian.net.asc
+
+sudo apt-get update
+sudo apt-get install -y datalad git-annex
+
+mkdir -p data
+```
+
+**`setup_env.sh`** - Sets up Python environment using `uv`:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+VENV_NAME="${1:-.venv}"
+
+echo ">>> Installing uv..."
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+
+echo ">>> Syncing environment from pyproject.toml..."
+uv sync
+
+echo ">>> Done! To activate run:"
+echo "  source ${VENV_NAME}/bin/activate"
+```
+
+**`get_datasets.sh`** - Downloads datasets via Datalad:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+mkdir -p data
+cd data/
+
+# Download Algonauts 2025 competitors dataset
+datalad install -r -s https://github.com/courtois-neuromod/algonauts_2025.competitors.git
+cd algonauts_2025.competitors
+datalad get stimuli/transcripts/
+datalad get fmri/
+
+cd ../
+datalad install https://github.com/courtois-neuromod/cneuromod.processed.git
+cd cneuromod.processed
+datalad get fmriprep/hcptrt/sub-01/
+datalad get fmriprep/hcptrt/sourcedata/hcptrt/sub-01/ses-*/func/sub-01_ses-*_task-*_events.tsv
+```
+
+---
+
+### 2.7 Analysis Notebook (`notebook.ipynb`)
+
+The notebook underwent substantial updates (~9000+ lines) implementing a comprehensive multi-atlas analysis workflow.
+
+**Multi-Atlas Loader Initialization:**
+
+```python
+from utils.dataloader import AlgonautsLoader, HCPTRTLoader
+
+# Initialize with different parcellations
+hcptrt_mmp = HCPTRTLoader(
+    fmri_dir="data/cneuromod.processed/fmriprep/hcptrt/",
+    subjects=[1],
+    tr=1.49,
+    hrf_delay=5,
+    parcellation="mmp"  # Glasser 360 - 379 regions
+)
+
+hcptrt_yeo7 = HCPTRTLoader(
+    fmri_dir="data/cneuromod.processed/fmriprep/hcptrt/",
+    subjects=[1],
+    parcellation="yeo7"  # Yeo 7 networks - 7 regions
+)
+
+hcptrt_ca = HCPTRTLoader(
+    fmri_dir="data/cneuromod.processed/fmriprep/hcptrt/",
+    subjects=[1],
+    parcellation="ca_parcels"  # Cole-Anticevic - parcel level
+)
+```
+
+**Loading Data Across All Tasks:**
+
+```python
+# Load continuous BOLD for all 8 HCPTRT tasks
+all_tasks_data = hcptrt_ca.load_all_tasks_fmri(
+    subject="sub-01",
+    session="ses-001",
+    run=1,
+    parcellate=True,
+    denoise=True
+)
+
+# Keys: ['emotion', 'gambling', 'language', 'restingstate', 
+#        'motor', 'relational', 'social', 'wm']
+```
+
+**Atlas Information with Lobe Metadata:**
+
+```python
+atlas_info = hcptrt_ca.get_atlas_info()
+
+# View parcel descriptions with lobe and structure_type
+for pid, desc in list(atlas_info["parcel_desc"].items())[:5]:
+    print(f"Parcel {pid}:")
+    print(f"  Name: {desc['name']}")
+    print(f"  Hemisphere: {desc['hemisphere']}")
+    print(f"  Lobe: {desc['lobe']}")
+    print(f"  Structure Type: {desc['structure_type']}")
+```
+
+**Visualization Examples:**
+
+```python
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import umap
+
+# PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+# t-SNE
+tsne = TSNE(n_components=2, perplexity=15, random_state=42)
+X_tsne = tsne.fit_transform(X_scaled)
+
+# UMAP
+reducer = umap.UMAP(n_components=2, n_neighbors=15, random_state=42)
+X_umap = reducer.fit_transform(X_scaled)
+```
+
+**Filtering by Lobe:**
+
+```python
+# Filter to visualize only visual (occipital) regions
+occipital_indices = [
+    pid for pid, desc in atlas_desc.items()
+    if desc.get("lobe") == "occipital"
+]
+
+# Extract subcortical only
+subcortical_indices = [
+    pid for pid, desc in atlas_desc.items()
+    if desc.get("structure_type") == "subcortical"
+]
+```
+
+---
+
+## 🚀 Next Steps
+
+- **Cross-Subject Fingerprinting**: Test if the functional fingerprints generated from Subject 1's stacked tasks can identify the same regions in Subject 2.
+- **Bridge to Algonauts**: Use the stable fingerprints learned from HCPTRT to guide the analysis of the more variable Algonauts movie data.
+- **TRACE Training on Multi-Atlas Data**: Initialize the contrastive model using cross-task stacked matrices with multi-parcellation support.
+
+---
+
 # Results: 2026-04-23 11:30 (HCPTRT Multi-Atlas Functional Fingerprinting)
 
 ## 📊 Summary of Findings (HCPTRT Dataset)

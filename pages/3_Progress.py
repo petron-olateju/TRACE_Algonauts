@@ -52,6 +52,47 @@ st.info("""
 
 st.markdown("---")
 
+st.subheader("2.5 Centralized Lobe Mapping (`utils/loaders/parcel_maps.py`)")
+
+st.markdown("""
+The `parcel_maps.py` module provides a unified mapping system for region-to-lobe classification across all supported atlases:
+
+| Lobe | Description |
+|------|-------------|
+| `occipital` | Primary and association visual cortex |
+| `parietal` | Dorsal visual, attention, somatosensory association |
+| `temporal` | Lateral temporal cortex, hippocampus, amygdala |
+| `prefrontal` | Prefrontal cortex, default-mode nodes |
+| `somatomotor` | Primary motor and somatosensory cortex |
+| `insular` | Insular and opercular cortex, salience network |
+| `cingulate` | Anterior and posterior cingulate cortex |
+| `orbitofrontal` | Orbitofrontal cortex, limbic network nodes |
+| `basal_ganglia` | Striatum (caudate, putamen, accumbens), pallidum |
+| `diencephalon` | Thalamus and hypothalamus |
+| `cerebellum` | Cerebellar cortex and deep nuclei |
+| `brainstem` | Brainstem structures |
+""")
+
+st.markdown("---")
+
+st.subheader("3.1 CLI Preprocessing (`main.py`)")
+
+st.markdown("""
+Batch preprocessing for HCPTRT data via command-line interface:
+
+```bash
+# Preprocess HCPTRT data for subject 01
+python main.py preprocessing hcptrt 01
+
+# Preprocess for specific subject
+python main.py preprocessing hcptrt sub-03
+```
+
+The CLI script reads configuration from `configs/configs.yaml` and `configs/dirs.yaml`, processes each task-session-run combination, and saves X (numpy array) and Y (DataFrame with lobe/structure_type metadata) to `dataset/hcptrt/`.
+""")
+
+st.markdown("---")
+
 st.subheader("3. Comparative Atlas Architecture")
 
 st.markdown("""
@@ -96,6 +137,8 @@ st.markdown("""
 | HCPTRT Loader Architecture | ✅ Complete | HCPTRT |
 | Cross-Task Signal Stacking | ✅ Validated | HCPTRT |
 | Surface-Based Parcellation | ✅ Complete | HCPTRT |
+| Centralized Lobe Mapping | ✅ Complete | Both |
+| CLI Preprocessing (`main.py`) | ✅ Complete | HCPTRT |
 | TRACE Contrastive Training | 🔄 Initializing | Both |
 """)
 
