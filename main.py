@@ -26,6 +26,7 @@ def run_preprocessing_hcptrt(subject: str):
     tr = params["tr"]
     hrf_delay = params["hrf_delay"]
     parcellation = params["parcellation"]
+    n_windows_per_task = params['n_windows_per_task']
     
     # Ensure subject ID is in sub-XX format
     if not subject.startswith("sub-"):
@@ -54,7 +55,7 @@ def run_preprocessing_hcptrt(subject: str):
                     
                     # Get original number of timepoints (T)
                     img = nib.load(bold_path)
-                    T = img.shape[0]
+                    T = img.shape[0] if n_windows_per_task <= 1 else n_windows_per_task
                     
                     # Generate X and Y using parcel_samples_hcptrt
                     # trials="continuous" with n_windows=T preserves original timepoints

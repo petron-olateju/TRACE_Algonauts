@@ -5,6 +5,7 @@ algonauts:
     context_trs: 5
     atlas_name: '1000Parcels_7Networks_order'
     num_parcels: 1000
+    n_windows_per_task: 60
 
   subjects:
     - 1
@@ -18,6 +19,7 @@ hcptrt:
     hrf_delay: 3
     context_trs: 5
     parcellation: 'ca_parcels'
+    n_windows_per_task: 60
   
   subjects:
     - 1
